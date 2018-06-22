@@ -32,6 +32,8 @@
 #include "symbolic_sx.hpp"
 #include "unary_sx.hpp"
 #include "binary_sx.hpp"
+#include "call_sx.hpp"
+#include "output_sx.hpp"
 #include "global_options.hpp"
 #include "sx_function.hpp"
 
@@ -368,6 +370,15 @@ namespace casadi {
       }
     }
     return BinarySX::create(Operation(op), x, y);
+  }
+
+  std::vector<SXElem> SXElem::call_fun(const Function& f, const std::vector<SXElem>& deps) {
+    SXElem c = CallSX::create(f, deps);
+    std::vector<SXElem> ret(f.nnz_out());
+    for (casadi_int i=0;i<f.nnz_out();++i) {
+      ret[i] = OutputSX::create(c, i);
+    }
+    return ret;
   }
 
   SXElem SXElem::unary(casadi_int op, const SXElem& x) {

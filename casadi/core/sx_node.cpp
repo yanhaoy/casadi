@@ -130,14 +130,26 @@ namespace casadi {
       return ss.str();
     }
 
-    // Get expressions for dependencies
-    std::string arg[2];
-    for (casadi_int i=0; i<n_dep(); ++i) {
-      arg[i] = dep(i)->print_compact(nodeind, intermed);
-    }
+    string s;
+    if (op()==OP_CALL) {
+      // Get expressions for dependencies
+      s = "call(";
+      std::string arg[2];
+      for (casadi_int i=0; i<n_dep(); ++i) {
+        s+= dep(i)->print_compact(nodeind, intermed);
+        if (i<n_dep()-1) s+=",";
+      }
+      s += ")";
+    } else {
+      // Get expressions for dependencies
+      std::string arg[2];
+      for (casadi_int i=0; i<n_dep(); ++i) {
+        arg[i] = dep(i)->print_compact(nodeind, intermed);
+      }
 
-    // Get expression for this
-    string s = print(arg[0], arg[1]);
+      // Get expression for this
+      s = print(arg[0], arg[1]);
+    }
 
     // Decide what to do with the expression
     if (ind==0) {
