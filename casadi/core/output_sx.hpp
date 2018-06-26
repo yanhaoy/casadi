@@ -81,6 +81,14 @@ namespace casadi {
     /** \brief  Output index */
     int oind_;
 
+    static std::vector<SXElem> split(const SXElem& e, casadi_int n) {
+      std::vector<SXElem> ret(n);
+      for (casadi_int i=0;i<n;++i) {
+        ret[i] = OutputSX::create(e, i);
+      }
+      return ret;
+    }
+
     void serialize_node(Serializer& s) const override {
       s.pack("OutputSX::dep", dep_);
       s.pack("OutputSX::oind", oind_);

@@ -374,11 +374,7 @@ namespace casadi {
 
   std::vector<SXElem> SXElem::call_fun(const Function& f, const std::vector<SXElem>& deps) {
     SXElem c = CallSX::create(f, deps);
-    std::vector<SXElem> ret(f.nnz_out());
-    for (casadi_int i=0;i<f.nnz_out();++i) {
-      ret[i] = OutputSX::create(c, i);
-    }
-    return ret;
+    return OutputSX::split(c, f.nnz_out());
   }
 
   SXElem SXElem::unary(casadi_int op, const SXElem& x) {

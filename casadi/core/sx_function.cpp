@@ -632,6 +632,26 @@ namespace casadi {
         break;
       case OP_PARAMETER:
         w[a.i0] = *p_it++; break;
+      case OP_CALL:
+        {
+          auto& m = call_.nodes[a.i1];
+          const SXElem& orig = *b_it++;
+          std::vector<SXElem> deps(m.n_dep);
+          bool identical = true;
+
+          std::vector<SXElem> ret;
+          for (casadi_int i=0;i<m.n_dep;++i) {
+            identical &= SXElem::is_equal(w[m.dep[i]], orig->dep(i), 2);
+          }
+          if (identical) {
+            ret = OutputSX::split(orig, m.n_out);
+          } else {
+            for (casadi_int i=0;i<m.n_dep;++i) deps[i] = w[m.dep[i]];
+            ret = SXElem::call_fun(m.f, deps);
+          }
+          for (casadi_int i=0;i<m.n_out;++i) w[m.out[i]] = ret[i];
+        }
+        break;
       default:
         {
           // Evaluate the function to a temporary value
