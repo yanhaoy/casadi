@@ -198,6 +198,11 @@ namespace casadi {
       casadi_error("Code generation is not possible since variables "
                    + str(free_vars_) + " are free.");
     }
+
+    // Generate code for the call nodes
+    for (auto&& m : call_.nodes) {
+      g.add_dependency(m.f);
+    }
   }
 
   void SXFunction::codegen_body(CodeGenerator& g) const {
@@ -206,7 +211,31 @@ namespace casadi {
     for (auto&& a : algorithm_) {
       if (a.op==OP_OUTPUT) {
         g << "if (res[" << a.i0 << "]!=0) "
-          << "res["<< a.i0 << "][" << a.i2 << "]=" << g.sx_work(a.i1);
+          << "res["<< a.i0 << "][" << a.i2 << "]=" << g.sx_work(a.i1) << ";\n";
+      } else if (a.op==OP_CALL) {
+        auto& m = call_.nodes[a.i1];
+
+        // Collect input arguments
+        casadi_int offset = worksize_+call_.sz_w;
+        for (casadi_int i=0; i<m.f_n_in; ++i) {
+          g << "arg[" << n_in_+i << "]=" << "w+" + str(i+offset) << ";\n";
+          offset += m.f_nnz_in[i];
+        }
+
+        offset = worksize_+call_.sz_w+call_.sz_w_arg;
+        // Collect output arguments
+        for (casadi_int i=0; i<m.f_n_out; ++i) {
+          g << "res[" << n_out_+i << "]=" << "w+" + str(i+offset) << ";\n";
+          offset += m.f_nnz_out[i];
+        }
+        for (casadi_int i=0;i<m.n_dep;++i) {
+          g << "w["+str(i+worksize_+call_.sz_w) + "] = " << g.sx_work(m.dep[i]) << ";\n";
+        }
+        // Call function
+        g << "if (" << g(m.f, "arg+"+str(n_in_), "res+"+str(n_out_), "iw", "w+" + str(worksize_)) << ") return 1;\n";
+        for (casadi_int i=0;i<m.n_out;++i) {
+          g << g.sx_work(m.out[i]) << " = w[" + str(i+worksize_+call_.sz_w+call_.sz_w_arg) + "];\n";
+        }
       } else {
 
         // Where to store the result
@@ -223,8 +252,8 @@ namespace casadi {
           if (ndep==1) g << g.print_op(a.op, g.sx_work(a.i1));
           if (ndep==2) g << g.print_op(a.op, g.sx_work(a.i1), g.sx_work(a.i2));
         }
+        g  << ";\n";
       }
-      g  << ";\n";
     }
   }
 
