@@ -81,6 +81,19 @@ namespace casadi {
     /** \brief  Output index */
     int oind_;
 
+    void serialize_node(Serializer& s) const override {
+      s.pack("OutputSX::dep", dep_);
+      s.pack("OutputSX::oind", oind_);
+    }
+
+    static SXElem deserialize(DeSerializer& s) {
+      SXElem dep;
+      int oind;
+      s.unpack("OutputSX::dep", dep);
+      s.unpack("OutputSX::oind", oind);
+      return create(dep, oind);
+    }
+
   };
 
 

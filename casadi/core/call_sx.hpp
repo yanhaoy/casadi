@@ -84,6 +84,19 @@ class CallSX : public SXNode {
     /** \brief  The dependencies of the node */
     std::vector<SXElem> dep_;
 
+    void serialize_node(Serializer& s) const override {
+      s.pack("CallSX::f", f_);
+      s.pack("CallSX::dep", dep_);
+    }
+
+    static SXElem deserialize(DeSerializer& s) {
+      std::vector<SXElem> dep;
+      Function f;
+      s.unpack("CallSX::f", f);
+      s.unpack("CallSX::dep", dep);
+      return create(f, dep);
+    }
+
 };
 
 

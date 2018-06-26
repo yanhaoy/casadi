@@ -214,6 +214,7 @@ class CASADI_EXPORT SXFunction :
     std::vector<SXElem> operations;
     std::vector<SXElem> constants;
     std::vector<double> default_in;
+    CallInfo call;
   };
 
   /** \brief Constructor */

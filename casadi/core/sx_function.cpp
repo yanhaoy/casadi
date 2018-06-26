@@ -1079,7 +1079,7 @@ namespace casadi {
     XFunction<SXFunction, SX, SXNode>(e.xfunction),
     algorithm_(e.algorithm), worksize_(e.worksize),
     free_vars_(e.free_vars), operations_(e.operations),
-    constants_(e.constants), default_in_(e.default_in) {
+    constants_(e.constants), default_in_(e.default_in), call_(e.call) {
 
     // Default (persistent) options
     just_in_time_opencl_ = false;
@@ -1095,6 +1095,21 @@ namespace casadi {
     s.pack("SXFunction::operations", operations_);
     s.pack("SXFunction::constants", constants_);
     s.pack("SXFunction::default_in", default_in_);
+
+    s.pack("SXFunction::call_sz_arg", call_.sz_arg);
+    s.pack("SXFunction::call_sz_res", call_.sz_res);
+    s.pack("SXFunction::call_sz_iw", call_.sz_iw);
+    s.pack("SXFunction::call_sz_w", call_.sz_w);
+    s.pack("SXFunction::call_sz_arg", call_.sz_w_arg);
+    s.pack("SXFunction::call_sz_res", call_.sz_w_res);
+
+    s.pack("SXFunction::call_nodes_size", call_.nodes.size());
+    // Loop over nodes
+    for (const auto& n : call_.nodes) {
+      s.pack("SXFunction::call_nodes_f", n.f);
+      s.pack("SXFunction::call_nodes_dep", n.dep);
+      s.pack("SXFunction::call_nodes_out", n.out);
+    }
 
     // Loop over algorithm
     for (const auto& e : algorithm_) {
@@ -1119,6 +1134,27 @@ namespace casadi {
     s.unpack("SXFunction::operations", info.operations);
     s.unpack("SXFunction::constants", info.constants);
     s.unpack("SXFunction::default_in", info.default_in);
+
+    s.unpack("SXFunction::call_sz_arg", info.call.sz_arg);
+    s.unpack("SXFunction::call_sz_res", info.call.sz_res);
+    s.unpack("SXFunction::call_sz_iw", info.call.sz_iw);
+    s.unpack("SXFunction::call_sz_w", info.call.sz_w);
+    s.unpack("SXFunction::call_sz_arg", info.call.sz_w_arg);
+    s.unpack("SXFunction::call_sz_res", info.call.sz_w_res);
+
+    size_t nodes_size;
+    s.unpack("SXFunction::call_nodes_size", nodes_size);
+    info.call.nodes.reserve(nodes_size);
+
+    // Loop over nodes
+    for (casadi_int k=0;k<nodes_size;++k) {
+      Function f;
+      s.unpack("SXFunction::call_nodes_f", f);
+      info.call.nodes.emplace_back(f);
+      auto& e = info.call.nodes[k];
+      s.unpack("SXFunction::call_nodes_dep", e.dep);
+      s.unpack("SXFunction::call_nodes_out", e.out);
+    }
 
     info.algorithm.resize(n_instructions);
     for (casadi_int k=0;k<n_instructions;++k) {
