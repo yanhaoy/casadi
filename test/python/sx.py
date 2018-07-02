@@ -1442,8 +1442,8 @@ class SXtests(casadiTestCase):
 
     self.checkfunction(F1,F2,inputs=[[0.1,1.7,2.3],1.13,0.11])
 
-    self.check_serialize(F2)
-    self.check_codegen(F2)
+    self.check_serialize(F2,inputs=[[0.1,1.7,2.3],1.13,0.11])
+    self.check_codegen(F2,inputs=[[0.1,1.7,2.3],1.13,0.11],opts={"avoid_stack":True})
 
     F1 = Function('F',[x,y,z],F1(2*x,3*y,4*z))
     F2 = Function('F',[x,y,z],F2(2*x,3*y,4*z))

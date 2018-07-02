@@ -39,7 +39,7 @@ namespace casadi {
     OutputSX(const SXElem& dep, int oind) : dep_(dep), oind_(oind) {
 
     }
-  
+
   public:
     /** \brief  Create a unary expression */
     inline static SXElem create(const SXElem& dep, int oind) {

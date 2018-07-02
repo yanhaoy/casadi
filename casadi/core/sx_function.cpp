@@ -102,7 +102,7 @@ namespace casadi {
           double* call_w          = w + worksize_;
           double* call_w_arg      = call_w + call_.sz_w;
           double* call_w_res      = call_w_arg + call_.sz_w_arg;
-          
+
           auto& m = call_.nodes[e.i1];
           double* ptr_w = call_w_arg;
           for (casadi_int i=0;i<m.f_n_in;++i) {
@@ -235,10 +235,13 @@ namespace casadi {
           g << "w["+str(i+worksize_+call_.sz_w) + "] = " << g.sx_work(m.dep[i]) << ";\n";
         }
         // Call function
-        g << "if (" << g(m.f, "arg+"+str(n_in_), "res+"+str(n_out_), "iw", "w+" + str(worksize_)) << ") return 1;\n";
+        g << "if (";
+        g << g(m.f, "arg+"+str(n_in_), "res+"+str(n_out_), "iw", "w+" + str(worksize_));
+        g << ") return 1;\n";
         for (casadi_int i=0;i<m.n_out;++i) {
           if (m.out[i]>=0)
-            g << g.sx_work(m.out[i]) << " = w[" + str(i+worksize_+call_.sz_w+call_.sz_w_arg) + "];\n";
+            g << g.sx_work(m.out[i]) << " = ";
+            g << "w[" + str(i+worksize_+call_.sz_w+call_.sz_w_arg) + "];\n";
         }
       } else {
 
@@ -662,7 +665,7 @@ namespace casadi {
             ret = SXElem::call_fun(m.f, deps);
           }
           for (casadi_int i=0;i<m.n_out;++i) {
-            if(m.out[i]>=0) w[m.out[i]] = ret[i];
+            if (m.out[i]>=0) w[m.out[i]] = ret[i];
           }
         }
         break;
@@ -977,7 +980,7 @@ namespace casadi {
           bvec_t* call_w          = w + worksize_;
           bvec_t* call_w_arg      = call_w + call_.sz_w;
           bvec_t* call_w_res      = call_w_arg + call_.sz_w_arg;
-          
+
           auto& m = call_.nodes[e.i1];
           bvec_t* ptr_w = call_w_arg;
           for (casadi_int i=0;i<m.f_n_in;++i) {
@@ -1036,7 +1039,7 @@ namespace casadi {
           bvec_t* call_w          = w + worksize_;
           bvec_t* call_w_arg      = call_w + call_.sz_w;
           bvec_t* call_w_res      = call_w_arg + call_.sz_w_arg;
-          
+
           auto& m = call_.nodes[it->i1];
           bvec_t* ptr_w = call_w_arg;
           for (casadi_int i=0;i<m.f_n_in;++i) {
@@ -1302,8 +1305,5 @@ namespace casadi {
     ret->finalize();
     return ret;
   }
-
-
-  
 
 } // namespace casadi
