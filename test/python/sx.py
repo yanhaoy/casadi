@@ -36,7 +36,6 @@ try:
 except:
 	scipy_available = False
 
-@run_only(["call_fun"])
 class SXtests(casadiTestCase):
 
   def setUp(self):
