@@ -202,6 +202,8 @@ class CASADI_EXPORT SXFunction :
       casadi_int f_n_out;
       std::vector<int> f_nnz_in;
       std::vector<int> f_nnz_out;
+
+      std::vector<SXElem> out_sx;
     };
     std::vector<Node> nodes;
   } call_;

@@ -1440,8 +1440,10 @@ class SXtests(casadiTestCase):
     F1 = Function('F',[x,y,z],[sin(v[0]*y-args[-1]),cos(mtimes(v[1],v[0].T)/y)])
     F2 = Function('F',[x,y,z],[sin(v2[:2]*y-args[-1]),cos(mtimes(v2[2:],v2[:2].T)/y)])
 
-
     self.checkfunction(F1,F2,inputs=[[0.1,1.7,2.3],1.13,0.11])
+
+    self.check_serialize(F2)
+    self.check_codegen(F2)
 
     F1 = Function('F',[x,y,z],F1(2*x,3*y,4*z))
     F2 = Function('F',[x,y,z],F2(2*x,3*y,4*z))
@@ -1452,6 +1454,8 @@ class SXtests(casadiTestCase):
     F2 = Function('F',[x,y,z],F2(x,3*y,4*z))
 
     self.checkfunction(F1,F2,inputs=[[0.1,1.7,2.3],1.13,0.11])
+
+
 
  
 
