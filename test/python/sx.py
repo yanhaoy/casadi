@@ -1449,10 +1449,11 @@ class SXtests(casadiTestCase):
     self.checkfunction(F1,F2,inputs=[[0.1,1.7,2.3],1.13,0.11])
 
     F1 = Function('F',[x,y,z],F1(x,3*y,4*z))
-    F2 = Function('F',[x,y,z],F2(x,y,z))
+    F2 = Function('F',[x,y,z],F2(x,3*y,4*z))
 
     self.checkfunction(F1,F2,inputs=[[0.1,1.7,2.3],1.13,0.11])
 
+ 
 
 
 if __name__ == '__main__':
