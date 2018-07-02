@@ -136,7 +136,6 @@ namespace casadi {
     if (op()==OP_CALL) {
       // Get expressions for dependencies
       s = "call(";
-      std::string arg[2];
       for (casadi_int i=0; i<n_dep(); ++i) {
         s+= dep(i)->print_compact(nodeind, intermed);
         if (i<n_dep()-1) s+=",";

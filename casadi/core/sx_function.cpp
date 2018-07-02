@@ -951,6 +951,31 @@ namespace casadi {
       case OP_OUTPUT:
         if (res[e.i0]!=nullptr) res[e.i0][e.i2] = w[e.i1];
         break;
+      case OP_CALL:
+        {
+          const bvec_t** call_arg = arg + n_in_;
+          bvec_t** call_res       = res + n_out_;
+          casadi_int* call_iw     = iw;
+          bvec_t* call_w          = w + worksize_;
+          bvec_t* call_w_arg      = call_w + call_.sz_w;
+          bvec_t* call_w_res      = call_w_arg + call_.sz_w_arg;
+          
+          auto& m = call_.nodes[e.i1];
+          bvec_t* ptr_w = call_w_arg;
+          for (casadi_int i=0;i<m.f_n_in;++i) {
+            call_arg[i] = ptr_w;
+            ptr_w+=m.f_nnz_in[i];
+          }
+          ptr_w = call_w_res;
+          for (casadi_int i=0;i<m.f_n_out;++i) {
+            call_res[i] = ptr_w;
+            ptr_w+=m.f_nnz_out[i];
+          }
+          for (casadi_int i=0;i<m.n_dep;++i) call_w_arg[i] = w[m.dep[i]];
+          m.f(call_arg, call_res, call_iw, call_w);
+          for (casadi_int i=0;i<m.n_out;++i) w[m.out[i]] = call_w_res[i];
+        }
+        break;
       default: // Unary or binary operation
         w[e.i0] = w[e.i1] | w[e.i2]; break;
       }
@@ -981,6 +1006,35 @@ namespace casadi {
         if (res[it->i0]!=nullptr) {
           w[it->i1] |= res[it->i0][it->i2];
           res[it->i0][it->i2] = 0;
+        }
+        break;
+      case OP_CALL:
+        {
+          bvec_t** call_arg = arg + n_in_;
+          bvec_t** call_res       = res + n_out_;
+          casadi_int* call_iw     = iw;
+          bvec_t* call_w          = w + worksize_;
+          bvec_t* call_w_arg      = call_w + call_.sz_w;
+          bvec_t* call_w_res      = call_w_arg + call_.sz_w_arg;
+          
+          auto& m = call_.nodes[it->i1];
+          bvec_t* ptr_w = call_w_arg;
+          for (casadi_int i=0;i<m.f_n_in;++i) {
+            call_arg[i] = ptr_w;
+            ptr_w+=m.f_nnz_in[i];
+          }
+          ptr_w = call_w_res;
+          for (casadi_int i=0;i<m.f_n_out;++i) {
+            call_res[i] = ptr_w;
+            ptr_w+=m.f_nnz_out[i];
+          }
+
+          fill_n(call_w_arg, m.n_dep, 0);
+          for (casadi_int i=0;i<m.n_out;++i) call_w_res[i] = w[m.out[i]];
+          m.f.rev(call_arg, call_res, call_iw, call_w);
+
+          for (casadi_int i=0;i<m.n_out;++i) w[m.out[i]] = 0;
+          for (casadi_int i=0;i<m.n_dep;++i) w[m.dep[i]] |= call_w_arg[i];
         }
         break;
       default: // Unary or binary operation
