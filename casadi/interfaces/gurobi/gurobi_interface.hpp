@@ -50,6 +50,11 @@ namespace casadi {
     int return_status;
     bool success;
 
+    std::vector<int> sos_indices_flat;
+    std::vector<double> sos_weights_flat;
+    std::vector<int> sos_begin;
+    std::vector<int> sos_types;
+
     /// Constructor
     GurobiMemory();
 
@@ -138,6 +143,13 @@ namespace casadi {
 
     // Maximum size of ind/val vectors
     casadi_int indval_size_;
+
+
+
+    std::vector<int> sos_indices_flat_;
+    std::vector<double> sos_weights_flat_;
+    std::vector<int> sos_begin_;
+    std::vector<int> sos_types_;
   };
 
 } // namespace casadi
