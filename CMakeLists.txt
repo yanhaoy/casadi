@@ -960,7 +960,7 @@ if(WITH_MUMPS)
   endif()
 endif()
 add_feature_info(mumps-interface WITH_MUMPS "Interface to MUMPS.")
-f
+
 set(SPRAL_DEPENDS_TARGET )
 set(SPRAL_FLAGS )
 
