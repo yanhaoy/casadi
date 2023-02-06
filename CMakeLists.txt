@@ -647,7 +647,7 @@ option(WITH_LAPACK "Compile the interface to LAPACK" ${WITH_LAPACK_DEF})
 option(WITH_BUILD_LAPACK "Download and install OpenBLAS for LAPACK+BLAS" OFF)
 set(BUILD_LAPACK_GIT_REPO https://github.com/jgillis/OpenBLAS.git)
 set(BUILD_LAPACK_VERSION ee15f53c9ef7148b05e1b2ff80003df1685f0f10)
-set(BUILD_LAPACK_GIT_REPO git@github.com:xianyi/OpenBLAS.git)
+set(BUILD_LAPACK_GIT_REPO https://github.com/xianyi/OpenBLAS.git)
 set(BUILD_LAPACK_VERSION v0.3.21)
 
 # qpOASES: An active-set QP solver
