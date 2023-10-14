@@ -452,6 +452,33 @@ public:
     OPTI_DUAL_G // dual
   };
 
+  // Lookup ConstraintType to string
+  inline std::string to_string(ConstraintType type, bool detail=true) {
+    if (detail) {
+      switch (type) {
+        case OPTI_GENERIC_EQUALITY: return "g1(x,p) == g2(x,p)";
+        case OPTI_GENERIC_INEQUALITY: return "g1(x,p) <= g2(x,p)";
+        case OPTI_EQUALITY: return "g(x,p) == bound(p)";
+        case OPTI_INEQUALITY: return "g(x,p) <= bound(p)";
+        case OPTI_DOUBLE_INEQUALITY: return "lb(p) <= g(x,p) <= ub(p)";
+        case OPTI_PSD: return "A(x,p) >= b(p)";
+        case OPTI_UNKNOWN: return "unknown";
+        default: return "unknown";
+      }
+    } else {
+      switch (type) {
+        case OPTI_GENERIC_EQUALITY: return "equality";
+        case OPTI_GENERIC_INEQUALITY: return "inequality";
+        case OPTI_EQUALITY: return "equality";
+        case OPTI_INEQUALITY: return "inequality";
+        case OPTI_DOUBLE_INEQUALITY: return "inequality";
+        case OPTI_PSD: return "matrix inequality";
+        case OPTI_UNKNOWN: return "unknown";
+        default: return "unknown";
+      }
+    }
+  }
+
   struct IndexAbstraction {
     IndexAbstraction() : start(0), stop(0) {}
     casadi_int start;
@@ -553,6 +580,8 @@ public:
   std::string describe(const MX& x, casadi_index indent=0) const;
 
   void show_infeasibilities(double tol=0) const;
+
+  void show_constraints() const;
 
   void solve_prepare();
   DMDict solve_actual(const DMDict& args);

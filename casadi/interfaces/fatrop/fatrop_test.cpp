@@ -207,6 +207,15 @@ class CasadiStructuredQP : public fatrop::OCPAbstract {
           int out_n = 3; // cols
           PACKMAT(out_m, out_n, get_ptr(r), out_m, res, 0, 0);
           blasfeo_print_dmat(out_m, out_n,  res, 0, 0);
+
+          std::vector<double> r2 = {1, -0.1, 0.3, 0.2, 0.4, 0.2, 1, 0, 0, 0, 0, 0};
+
+          blasfeo_pack_tran_dmat(out_n, out_m, get_ptr(r2), out_n, res, 0, 0);
+
+          blasfeo_print_dmat(out_m, out_n,  res, 0, 0);
+
+          //casadi_error("foo");
+
         } else if (k==1) {
           std::vector<double> r = {1,	4,	2,	1,	0.3, 0,
                                     3,	1,	00,	1,	0.2, 0};
@@ -214,6 +223,14 @@ class CasadiStructuredQP : public fatrop::OCPAbstract {
           int out_n = 2; // cols
           PACKMAT(out_m, out_n, get_ptr(r), out_m, res, 0, 0);
           blasfeo_print_dmat(out_m, out_n,  res, 0, 0);
+
+
+          std::vector<double> r2 = {1,3,4,1,2,0,1,1,0.3,0.2,0,0,0,0,0};
+
+          //blasfeo_pack_tran_dmat(out_n, out_m, get_ptr(r2), out_n, res, 0, 0);
+
+          //blasfeo_print_dmat(out_m, out_n,  res, 0, 0);
+
         } else if (k==2) {
           std::vector<double> r = {2, 4, 0, 0};
           int out_m = 4; // rows
@@ -409,6 +426,39 @@ class CasadiStructuredQP : public fatrop::OCPAbstract {
 } // namespace casadi
 
 int main() {
+
+  int m = 5;
+  int n = 7;
+
+
+  size_t s = blasfeo_memsize_dmat(m, n);
+  std::vector<double> mem(s, 0);
+
+  blasfeo_dmat res;
+  blasfeo_create_dmat(m, n, &res, &mem.front());
+
+  blasfeo_print_dmat(m, n, &res, 0, 0);
+
+
+  std::vector<double> a(100);
+  for (int i=0;i<100;++i) a[i] = i+1;
+
+
+  //blasfeo_pack_dmat(2, 3, &a.front(), 10, &res, 1, 3);
+
+  //blasfeo_pack_tran_dmat(2, 3, &a.front(), 10, &res, 1, 3);
+  blasfeo_pack_tran_dmat(1, 3, &a.front(), 2, &res, 1, 3);
+
+  blasfeo_print_dmat(m, n, &res, 0, 0);
+  return 0;
+
+  /*blasfeo_pack_dmat(int m, int n, double *A, int lda, struct blasfeo_dmat *sB, int bi, int bj);
+
+  blasfeo_pack_tran_dmat(1, n, d->CD+p->CD_offsets[k]+(i-start), ng_ineq, res, 0, column++);
+
+  blasfeo_print_dmat(m, n,  res, 0, 0);*/
+
+
 
   casadi::CasadiStructuredQP qp;
 

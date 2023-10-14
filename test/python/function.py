@@ -3161,5 +3161,42 @@ class Functiontests(casadiTestCase):
 
     solver = nlpsol("solver","ipopt",nlp)
    
+  def test_fmu(self):
+  
+    
+    fmu_file = 'vdp.fmu'
+    # Path for the unzipped FMU
+    import os
+    unzipped_name = 'vdp'
+    unzipped_path = os.path.join(os.getcwd(), unzipped_name)
+    # Remove any existing directory with this name
+    # This prevents memory corruption if the old DLL is still in memory
+    import shutil
+    if os.path.isdir(unzipped_path): shutil.rmtree(unzipped_path)  
+    # Unzip
+    import zipfile
+    with zipfile.ZipFile(fmu_file, 'r') as zip_ref: zip_ref.extractall(unzipped_name)
+    print('Unzipped %s into %s' % (fmu_file, unzipped_path))
+
+    import casadi
+    import time
+    t1 = time.time()
+    dae = casadi.DaeBuilder('vdp', unzipped_path)
+    print('Loaded %s in %g seconds' % (unzipped_path, time.time() - t1))
+    dae.disp(True)
+
+    daefun = dae.create('f', ['x', 'u'], ['ode'])
+    x1 = casadi.MX.sym('x1')
+    x2 = casadi.MX.sym('x2')
+    x = casadi.vertcat(x1, x2)
+    u = casadi.MX.sym('u')
+    xdot = casadi.vertcat((1-x2**2)*x1 - x2 + u, x1)
+    dae = dict(x = x, u = u, ode = xdot)
+    
+    daefun_ref = Function('f',dae,['x', 'u'], ['ode'])
+    
+    self.checkfunction(daefun,daefun_ref,inputs=[vertcat(1.07,0.3),0.11],hessian=False,evals=1)
+    self.checkfunction(daefun,daefun_ref,inputs=[vertcat(1.03,0.07),0.13],hessian=False,evals=1)
+
 if __name__ == '__main__':
     unittest.main()

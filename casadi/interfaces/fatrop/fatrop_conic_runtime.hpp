@@ -27,7 +27,7 @@
 
 // SYMBOL "fatrop_mproject"
 template<typename T1>
-void casadi_fatrop_mproject(T1 factor, const T1* x, const casadi_int* sp_x,
+void casadi_fatrop_conic_mproject(T1 factor, const T1* x, const casadi_int* sp_x,
                             T1* y, const casadi_int* sp_y, T1* w) {
     casadi_int ncol_y;
     const casadi_int* colind_y;
@@ -39,7 +39,7 @@ void casadi_fatrop_mproject(T1 factor, const T1* x, const casadi_int* sp_x,
 
 // SYMBOL "fatrop_dense_transfer"
 template<typename T1>
-void casadi_fatrop_dense_transfer(double factor, const T1* x,
+void casadi_fatrop_conic_dense_transfer(double factor, const T1* x,
                                     const casadi_int* sp_x, T1* y,
                                     const casadi_int* sp_y, T1* w) {
     casadi_sparsify(x, w, sp_x, 0);
@@ -63,7 +63,7 @@ struct casadi_ocp_block {
 // C-REPLACE "casadi_ocp_block" "struct casadi_ocp_block"
 
 // SYMBOL "fatrop_unpack_blocks"
-inline void casadi_fatrop_unpack_blocks(casadi_int N, casadi_ocp_block* blocks, const casadi_int* packed) {
+inline void casadi_fatrop_conic_unpack_blocks(casadi_int N, casadi_ocp_block* blocks, const casadi_int* packed) {
     casadi_int i;
     for (i=0;i<N;++i) {
         blocks[i].offset_r = *packed++;
@@ -75,7 +75,7 @@ inline void casadi_fatrop_unpack_blocks(casadi_int N, casadi_ocp_block* blocks, 
 
 // SYMBOL "fatrop_ptr_block"
 template<typename T1>
-void casadi_fatrop_ptr_block(casadi_int N, T1** vs, T1* v, const casadi_ocp_block* blocks, int eye) {
+void casadi_fatrop_conic_ptr_block(casadi_int N, T1** vs, T1* v, const casadi_ocp_block* blocks, int eye) {
     casadi_int k, offset = 0;
     for(k=0;k<N;++k) {
         vs[k] = v+offset;
@@ -103,6 +103,14 @@ struct casadi_fatrop_conic_prob {
   const casadi_int *theirs_xsp, *theirs_usp, *theirs_Xsp, *theirs_Usp;
   const casadi_int *lamg_gapsp, *lugsp;
 
+  const casadi_int *ABsp;
+  const casadi_int *AB_offsets;
+  const casadi_int *CDsp;
+  const casadi_int *CD_offsets;
+  const casadi_int *RSQsp;
+  const casadi_int *RSQ_offsets;
+
+
   casadi_int N;
   casadi_int nx_total, nu_total, ng_total;
   casadi_ocp_block *A, *B, *C, *D;
@@ -111,20 +119,13 @@ struct casadi_fatrop_conic_prob {
   casadi_ocp_block *u, *x;
   casadi_ocp_block *lam_ul, *lam_xl, *lam_uu, *lam_xu, *lam_cl, *lam_cu;
 
+  casadi_ocp_block *AB, *CD, *RSQ;
+
   T1 warm_start;
   T1 inf;
 
 };
 // C-REPLACE "casadi_fatrop_conic_prob<T1>" "struct casadi_fatrop_conic_prob"
-
-// SYMBOL "fatrop_setup"
-template<typename T1>
-void casadi_fatrop_setup(casadi_fatrop_conic_prob<T1>* p) {
-
-
-}
-
-
 
 // SYMBOL "fatrop_data"
 template<typename T1>
@@ -149,8 +150,13 @@ struct casadi_fatrop_conic_data {
   T1 **hlg, **hug;
   T1 **hb;
 
+  T1 *AB, *CD, *RSQ;
+
   T1 **hZl, **hZu, **hzl, **hzu, **hlls, **hlus;
   T1 **pis, **hlbx, **hubx, **hlbu, **hubu, **lams;
+
+  casadi_int *a_eq, *a_ineq, *a_eq_idx, *a_ineq_idx;
+  casadi_int *x_eq, *x_ineq, *x_eq_idx, *x_ineq_idx;
 
   int *iidxbx, *iidxbu;
   int **hidxbx, **hidxbu, **hidxs;
@@ -167,19 +173,117 @@ struct casadi_fatrop_conic_data {
 // C-REPLACE "casadi_fatrop_conic_data<T1>" "struct casadi_fatrop_conic_data"
 
 
-// SYMBOL "qp_work"
+// SYMBOL "fatrop_setup"
 template<typename T1>
-void casadi_fatrop_work(const casadi_fatrop_conic_prob<T1>* p, casadi_int* sz_arg, casadi_int* sz_res, casadi_int* sz_iw, casadi_int* sz_w) {
-  casadi_qp_work(p->qp, sz_arg, sz_res, sz_iw, sz_w);
+void casadi_fatrop_conic_setup(casadi_fatrop_conic_prob<T1>* p) {
+
 
 }
 
-// SYMBOL "qp_init"
+// SYMBOL "fatrop_solve"
 template<typename T1>
-void casadi_fatrop_init(casadi_fatrop_conic_data<T1>* d, const T1*** arg, T1*** res, casadi_int** iw, T1** w) {
+int casadi_fatrop_conic_solve(casadi_fatrop_conic_data<T1>* d, const double** arg, double** res, casadi_int* iw, double* w) {
+    casadi_int k, i, j, n_row, offset, start, stop;
+    T1 f;
+    const casadi_fatrop_conic_prob<T1>* p = d->prob;
+    const casadi_qp_prob<T1>* p_qp = p->qp;
+    casadi_qp_data<T1>* d_qp = d->qp;
+
+    casadi_project(d_qp->a, p_qp->sp_a, d->AB, p->ABsp, d->pv);
+    casadi_project(d_qp->a, p_qp->sp_a, d->CD, p->CDsp, d->pv);
+
+    casadi_project(d_qp->h, p_qp->sp_h, d->RSQ, p->RSQsp, d->pv);
+
+    d->a_eq_idx[0] = 0;
+    d->a_ineq_idx[0] = 0;
+    d->x_eq_idx[0] = 0;
+    d->x_ineq_idx[0] = 0;
+
+    // Loop over CD blocks
+    for (k=0;k<p->N;++k) {
+      d->a_eq_idx[k+1] = d->a_eq_idx[k];
+      d->a_ineq_idx[k+1] = d->a_ineq_idx[k];
+      start = p->CD[k].offset_r;
+      stop  = p->CD[k].offset_r+p->CD[k].rows;
+      for (i=start;i<stop;++i) {
+        if (d_qp->lba[i]==d_qp->uba[i]) {
+          d->a_eq[d->a_eq_idx[k+1]++] = i;
+        } else {
+          if (d_qp->lba[i]==-inf && d_qp->uba[i]==inf) continue;
+          d->a_ineq[d->a_ineq_idx[k+1]++] = i;
+        }
+      }
+      d->x_eq_idx[k+1] = d->x_eq_idx[k];
+      d->x_ineq_idx[k+1] = d->x_ineq_idx[k];
+      start = p->CD[k].offset_c;
+      stop  = p->CD[k].offset_c+p->CD[k].cols;
+      uout() << "start" << start << "->" << stop << std::endl;
+      for (i=start;i<stop;++i) {
+        if (d_qp->lbx[i]==d_qp->ubx[i]) {
+          d->x_eq[d->x_eq_idx[k+1]++] = i;
+        } else {
+          if (d_qp->lbx[i]==-inf && d_qp->ubx[i]==inf) continue;
+          d->x_ineq[d->x_ineq_idx[k+1]++] = i;
+        }
+      }
+      uout() << "k=" << k << std::endl;
+      uout() << "a_eq" << std::vector<double>(d->a_eq+d->a_eq_idx[k], d->a_eq+d->a_eq_idx[k+1]) << std::endl;
+      uout() << "a_ineq" << std::vector<double>(d->a_ineq+d->a_ineq_idx[k], d->a_ineq+d->a_ineq_idx[k+1]) << std::endl;
+      uout() << "x_eq" << std::vector<double>(d->x_eq+d->x_eq_idx[k], d->x_eq+d->x_eq_idx[k+1]) << std::endl;
+      uout() << "x_ineq" << std::vector<double>(d->x_ineq+d->x_ineq_idx[k], d->x_ineq+d->x_ineq_idx[k+1]) << std::endl;
+
+      uout() << "CD=" << std::vector<double>(d->CD,d->CD+100) << std::endl;
+
+      uout() << "RSQ=" << std::vector<double>(d->RSQ,d->RSQ+100) << std::endl;
+    }
+
+
+}
+
+// SYMBOL "fatrop_work"
+template<typename T1>
+void casadi_fatrop_conic_work(const casadi_fatrop_conic_prob<T1>* p, casadi_int* sz_arg, casadi_int* sz_res, casadi_int* sz_iw, casadi_int* sz_w) {
+  casadi_qp_work(p->qp, sz_arg, sz_res, sz_iw, sz_w);
+
+  // Temporary work vectors
+  *sz_w = casadi_max(*sz_w, 2*(p->qp->nx+p->qp->na)); // pv
+  // Persistent work vectors
+  *sz_w += casadi_sp_nnz(p->ABsp); // AB
+  *sz_w += casadi_sp_nnz(p->CDsp); // CD
+  *sz_w += casadi_sp_nnz(p->RSQsp); // RSQ
+
+  *sz_iw += p->N+1; // a_eq_idx
+  *sz_iw += p->N+1; // a_ineq_idx
+  *sz_iw += p->N+1; // x_eq_idx
+  *sz_iw += p->N+1; // x_ineq_idx
+  *sz_iw += p->qp->na; // a_eq
+  *sz_iw += p->qp->na; // a_ineq
+  *sz_iw += p->qp->nx; // x_eq
+  *sz_iw += p->qp->nx; // x_ineq
+
+}
+
+
+// SYMBOL "fatrop_set_work"
+template<typename T1>
+void casadi_fatrop_conic_set_work(casadi_fatrop_conic_data<T1>* d, const T1*** arg, T1*** res, casadi_int** iw, T1** w) {
   // Local variables
   casadi_int offset, i, k;
   
   const casadi_fatrop_conic_prob<T1>* p = d->prob;
 
+  d->AB = *w; *w += casadi_sp_nnz(p->ABsp);
+  d->CD = *w; *w += casadi_sp_nnz(p->CDsp);
+  d->RSQ = *w; *w += casadi_sp_nnz(p->RSQsp);
+  d->pv = *w;
+
+  d->a_eq_idx = *iw;   *iw += p->N+1;
+  d->a_ineq_idx = *iw; *iw += p->N+1;
+  d->x_eq_idx = *iw;   *iw += p->N+1;
+  d->x_ineq_idx = *iw; *iw += p->N+1;
+  
+  d->a_eq = *iw;   *iw += p->qp->na;
+  d->a_ineq = *iw; *iw += p->qp->na;
+  d->x_eq = *iw;  *iw += p->qp->nx;
+  d->x_ineq = *iw; *iw += p->qp->nx;
 }

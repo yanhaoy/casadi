@@ -18,7 +18,8 @@ target_link_libraries(callback casadi)
 
 # Small example on how sparsity can be propagated throw a CasADi expression
 add_executable(propagating_sparsity propagating_sparsity.cpp)
-target_link_libraries(propagating_sparsity casadi)
+find_package (Eigen3 3.3 REQUIRED NO_MODULE)
+target_link_libraries(propagating_sparsity casadi Eigen3::Eigen)
 
 # Rosenbrock problem
 if(WITH_IPOPT)

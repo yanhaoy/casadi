@@ -558,6 +558,15 @@ void OptiAdvanced::show_infeasibilities(double tol) const {
   }
 }
 
+void OptiAdvanced::show_constraints() const {
+  try {
+    (*this)->show_constraints();
+  } catch(std::exception& e) {
+    THROW_ERROR("show_constraints", e.what());
+  }
+}
+
+
 void OptiAdvanced::solve_prepare() {
   try {
     (*this)->solve_prepare();

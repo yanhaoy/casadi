@@ -179,6 +179,8 @@ public:
   std::string g_describe(casadi_int i) const;
   std::string describe(const MX& x, casadi_int indent=0) const;
 
+  void show_constraints() const;
+
   void solve_prepare();
   DMDict solve_actual(const DMDict& args);
 

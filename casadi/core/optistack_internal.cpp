@@ -157,7 +157,7 @@ std::string OptiNode::describe(const MX& expr, casadi_int indent) const {
       VariableType vt;
       if (parse_opti_name(expr.name(), vt)) {
         description += "Opti " + variable_type_to_string(vt) + " '" + expr.name() +
-          "' of shape " + expr.dim()+
+          "' of shape " + expr.dim() + ", " + str(expr.nnz()) + " nz " +
           ", belonging to a different instance of Opti.";
       } else {
         description += "MX symbol '" + expr.name() + "' of shape " + expr.dim();
@@ -166,8 +166,9 @@ std::string OptiNode::describe(const MX& expr, casadi_int indent) const {
     }
   } else {
     if (has_con(expr)) {
-      description = "Opti constraint of shape " + expr.dim();
-      const Dict& extra = meta_con(expr).extra;
+      const MetaCon& mc = meta_con(expr);
+      description = "Opti " + to_string(mc.type, false) + " constraint of shape " + expr.dim() + ", " + str(expr.nnz()) + " nz";
+      const Dict& extra = mc.extra;
       auto it = extra.find("stacktrace");
       if (it!=extra.end()) {
         const Dict& stacktrace = it->second.as_dict();
@@ -176,7 +177,7 @@ std::string OptiNode::describe(const MX& expr, casadi_int indent) const {
     } else {
       std::vector<MX> s = symvar(expr);
       if (s.empty()) {
-        description+= "Constant epxression.";
+        description+= "Constant expression.";
       } else {
         description+= "General expression, dependent on " + str(s.size()) + " symbols:";
         for (casadi_int i=0;i<s.size();++i) {
@@ -946,6 +947,25 @@ void OptiNode::res(const DMDict& res) {
   mark_solved();
 }
 
+void OptiNode::show_constraints() const {
+  casadi_int i = 0;
+  casadi_int ng = 0, neg = 0, nig = 0;
+  // Loop over constraints
+  for (const auto& g : g_) {
+    uout() << "Constraint " << i << "/" << g_.size() << ":\n  " << describe(g, 1) << std::endl;
+    i++;
+    MetaCon mc = meta_con(g);
+    if (to_string(mc.type, false)=="equality") neg += g.nnz();
+    if (to_string(mc.type, false)=="inequality") nig += g.nnz();
+    ng +=g.nnz();
+  }
+  uout() << "Total number of scalarized constraints: " << ng << std::endl;
+  uout() << "  Number of scalarized equality constraints: " << neg << std::endl;
+  uout() << "  Number of scalarized inequality constraints: " << nig << std::endl;
+  uout() << "  ! Note that inequalities get promoted to equalities " << std::endl;
+  uout() << "    before reaching the solver when lb and ub match." << std::endl;
+}
+
 bool OptiNode::old_callback() const {
   if (callback_.is_null()) return false;
   InternalOptiCallback* cb = static_cast<InternalOptiCallback*>(callback_.get());
@@ -1165,11 +1185,15 @@ void OptiNode::set_value_internal(const MX& x, const DM& v) {
   // Assert x is linear in its symbolic primitives
   for (bool b : which_depends(x, symbols_cat, 2, false)) casadi_assert(!b, failmessage);
 
+  uout() << "symbols" << symbols << symbols[0].size() << std::endl;
+  uout() << "x" << x << x.size() << std::endl;
   // Evaluate jacobian of expr wrt symbols
   Dict opts = {{"compact", true}};
   Function Jf("Jf", std::vector<MX>{}, std::vector<MX>{jacobian(x, veccat(symbols), opts)});
   DM J = Jf(std::vector<DM>{})[0];
   Sparsity sp_JT = J.T().sparsity();
+  uout() << "sp_JT" << std::endl;
+  sp_JT.spy(uout());
 
   Function Ff("Ff", symbols, {x});
   DM E = Ff(std::vector<DM>(symbols.size(), 0))[0];

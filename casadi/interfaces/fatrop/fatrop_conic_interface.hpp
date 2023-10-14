@@ -23,8 +23,8 @@
  */
 
 
-#ifndef CASADI_HPIPM_INTERFACE_HPP
-#define CASADI_HPIPM_INTERFACE_HPP
+#ifndef CASADI_FATROP_CONIC_INTERFACE_HPP
+#define CASADI_FATROP_CONIC_INTERFACE_HPP
 
 #include "casadi/core/conic_impl.hpp"
 #include "casadi/core/linsol.hpp"
@@ -143,6 +143,9 @@ namespace casadi {
     /** \brief Set the (persistent) work vectors */
     void set_work(void* mem, const double**& arg, double**& res,
                           casadi_int*& iw, double*& w) const override;
+    /** \brief Set the (temporary) work vectors */
+    void set_temp(void* mem, const double** arg, double** res,
+                          casadi_int* iw, double* w) const override;
 
     /** \brief  Evaluate numerically */
     int solve(const double** arg, double** res,
@@ -165,6 +168,8 @@ namespace casadi {
     /** \brief Deserialize with type disambiguation */
     static ProtoFunction* deserialize(DeserializingStream& s) { return new FatropConicInterface(s); }
 
+    friend class CasadiStructuredQP;
+
   protected:
     explicit FatropConicInterface(DeserializingStream& s);
 
@@ -180,6 +185,8 @@ namespace casadi {
     Sparsity lamg_gapsp_;
     Sparsity lam_cusp_, pisp_;
 
+    Sparsity ABsp_, CDsp_, RSQsp_;
+
     std::vector< casadi_ocp_block > R_blocks, S_blocks, Q_blocks;
     std::vector< casadi_ocp_block > b_blocks, lug_blocks;
     std::vector< casadi_ocp_block > u_blocks, x_blocks;
@@ -188,12 +195,19 @@ namespace casadi {
     std::vector< casadi_ocp_block > lam_cu_blocks, A_blocks, B_blocks,
       C_blocks, D_blocks, I_blocks;
 
+
+    std::vector< casadi_ocp_block > AB_blocks, CD_blocks, RSQ_blocks;
+
     std::vector<int> nxs_;
     std::vector<int> nus_;
     std::vector<int> ngs_;
     std::vector<int> zeros_;
     casadi_int N_;
     casadi_int print_level_;
+
+
+    std::vector<casadi_int> AB_offsets_, CD_offsets_, RSQ_offsets_;
+
 
     bool warm_start_;
     double inf_;
@@ -205,4 +219,4 @@ namespace casadi {
 } // namespace casadi
 
 /// \endcond
-#endif // CASADI_HPIPM_INTERFACE_HPP
+#endif // CASADI_FATROP_CONIC_INTERFACE_HPP
