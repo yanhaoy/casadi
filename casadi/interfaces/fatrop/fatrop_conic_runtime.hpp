@@ -189,7 +189,7 @@ int casadi_fatrop_conic_solve(casadi_fatrop_conic_data<T1>* d, const double** ar
     const casadi_qp_prob<T1>* p_qp = p->qp;
     casadi_qp_data<T1>* d_qp = d->qp;
 
-    casadi_project(d_qp->a, p_qp->sp_a, d->AB, p->ABsp, d->pv);
+    casadi_fatrop_conic_mproject(-1.0, d_qp->a, p_qp->sp_a, d->AB, p->ABsp, d->pv);
     casadi_project(d_qp->a, p_qp->sp_a, d->CD, p->CDsp, d->pv);
 
     casadi_project(d_qp->h, p_qp->sp_h, d->RSQ, p->RSQsp, d->pv);
@@ -200,7 +200,7 @@ int casadi_fatrop_conic_solve(casadi_fatrop_conic_data<T1>* d, const double** ar
     d->x_ineq_idx[0] = 0;
 
     // Loop over CD blocks
-    for (k=0;k<p->N;++k) {
+    for (k=0;k<p->N+1;++k) {
       d->a_eq_idx[k+1] = d->a_eq_idx[k];
       d->a_ineq_idx[k+1] = d->a_ineq_idx[k];
       start = p->CD[k].offset_r;
@@ -232,6 +232,8 @@ int casadi_fatrop_conic_solve(casadi_fatrop_conic_data<T1>* d, const double** ar
       uout() << "x_eq" << std::vector<double>(d->x_eq+d->x_eq_idx[k], d->x_eq+d->x_eq_idx[k+1]) << std::endl;
       uout() << "x_ineq" << std::vector<double>(d->x_ineq+d->x_ineq_idx[k], d->x_ineq+d->x_ineq_idx[k+1]) << std::endl;
 
+      uout() << "AB=" << std::vector<double>(d->AB,d->AB+100) << std::endl;
+
       uout() << "CD=" << std::vector<double>(d->CD,d->CD+100) << std::endl;
 
       uout() << "RSQ=" << std::vector<double>(d->RSQ,d->RSQ+100) << std::endl;
@@ -252,10 +254,10 @@ void casadi_fatrop_conic_work(const casadi_fatrop_conic_prob<T1>* p, casadi_int*
   *sz_w += casadi_sp_nnz(p->CDsp); // CD
   *sz_w += casadi_sp_nnz(p->RSQsp); // RSQ
 
-  *sz_iw += p->N+1; // a_eq_idx
-  *sz_iw += p->N+1; // a_ineq_idx
-  *sz_iw += p->N+1; // x_eq_idx
-  *sz_iw += p->N+1; // x_ineq_idx
+  *sz_iw += p->N+2; // a_eq_idx
+  *sz_iw += p->N+2; // a_ineq_idx
+  *sz_iw += p->N+2; // x_eq_idx
+  *sz_iw += p->N+2; // x_ineq_idx
   *sz_iw += p->qp->na; // a_eq
   *sz_iw += p->qp->na; // a_ineq
   *sz_iw += p->qp->nx; // x_eq
@@ -277,10 +279,10 @@ void casadi_fatrop_conic_set_work(casadi_fatrop_conic_data<T1>* d, const T1*** a
   d->RSQ = *w; *w += casadi_sp_nnz(p->RSQsp);
   d->pv = *w;
 
-  d->a_eq_idx = *iw;   *iw += p->N+1;
-  d->a_ineq_idx = *iw; *iw += p->N+1;
-  d->x_eq_idx = *iw;   *iw += p->N+1;
-  d->x_ineq_idx = *iw; *iw += p->N+1;
+  d->a_eq_idx = *iw;   *iw += p->N+2;
+  d->a_ineq_idx = *iw; *iw += p->N+2;
+  d->x_eq_idx = *iw;   *iw += p->N+2;
+  d->x_ineq_idx = *iw; *iw += p->N+2;
   
   d->a_eq = *iw;   *iw += p->qp->na;
   d->a_ineq = *iw; *iw += p->qp->na;
