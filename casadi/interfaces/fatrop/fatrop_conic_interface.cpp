@@ -1094,13 +1094,16 @@ class CasadiStructuredQP : public fatrop::OCPAbstract {
     app.optimize();
 
 
+    // u0 x0 u1 u2 ...
     blasfeo_dvec* primal = static_cast<blasfeo_dvec*>(app.last_solution_primal());
+    // eq, dynamic, ineq
     blasfeo_dvec* dual = static_cast<blasfeo_dvec*>(app.last_solution_dual());
 
     auto d = &m->d;
     auto p = d->prob;
     casadi_qp_data<double>* d_qp = d->qp;
 
+    // Unpack primal solution
     casadi_int offset_fatrop = 0;
     casadi_int offset_casadi = 0;
     for (int k=0;k<N_+1;++k) {
@@ -1112,17 +1115,37 @@ class CasadiStructuredQP : public fatrop::OCPAbstract {
     }
 
     m->d_qp.success = true;
+    m->d.return_status = "solved";
 
-    /**for (int k=0;k<N_+1;++k) {
-      for (i=d->x_eq_idx[k];i<d->x_eq_idx[k+1];++i) {
-        blasfeo_unpack_dvec();
-        blasfeo_pack_tran_dmat(1, 1, &one, 1, res, d->x_eq[i]-p->CD[k].offset_c, column);
-        double v = -d_qp->lbx[d->x_eq[i]];
-        blasfeo_pack_tran_dmat(1, 1, &v, 1, res, p->nx[k]+p->nu[k], column);
-        column++;
+    std::vector<double> dualv(nx_+na_);
+    blasfeo_unpack_dvec(nx_+na_, dual, 0, get_ptr(dualv), 1);
+
+    // Unpack dual solution
+    offset_fatrop = 0;
+    // Inequalities
+    for (int k=0;k<N_+1;++k) {
+      for (casadi_int i=d->a_eq_idx[k];i<d->a_eq_idx[k+1];++i) {
+        d_qp->lam_a[d->a_eq[i]] = dualv[offset_fatrop++];
       }
-    }*/
-
+      for (casadi_int i=d->x_eq_idx[k];i<d->x_eq_idx[k+1];++i) {
+        d_qp->lam_x[d->x_eq[i]] = dualv[offset_fatrop++];
+      }
+    }
+    // Dynamics
+    for (int k=0;k<N_;++k) {
+      for (casadi_int i=0;i<p->nx[k];++i) {
+        d_qp->lam_a[AB_blocks[k].offset_r+i] = -dualv[offset_fatrop++];
+      }
+    }
+    // Inequalities
+    for (int k=0;k<N_+1;++k) {
+      for (casadi_int i=d->a_ineq_idx[k];i<d->a_ineq_idx[k+1];++i) {
+        d_qp->lam_a[d->a_ineq[i]] = dualv[offset_fatrop++];
+      }
+      for (casadi_int i=d->x_ineq_idx[k];i<d->x_ineq_idx[k+1];++i) {
+        d_qp->lam_x[d->x_ineq[i]] = dualv[offset_fatrop++];
+      }
+    }
     //const fatrop::FatropVecBF& primal = app.last_solution_primal();
     //const fatrop::FatropVecBF& dual = app.last_solution_dual();
 

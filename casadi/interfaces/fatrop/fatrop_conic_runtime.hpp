@@ -162,7 +162,7 @@ struct casadi_fatrop_conic_data {
   int **hidxbx, **hidxbu, **hidxs;
 
   int iter_count;
-  int return_status;
+  const char* return_status;
   T1 res_stat;
   T1 res_eq;
   T1 res_ineq;
