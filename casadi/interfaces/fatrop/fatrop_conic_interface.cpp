@@ -492,9 +492,13 @@ class CasadiStructuredQP : public fatrop::OCPAbstract {
         blasfeo_allocate_dvec(p->nx[k]+p->nu[k]+1, &v);
         blasfeo_allocate_dvec(p->nx[k+1], &r);
         // Fill v with [u;x;1]
-        blasfeo_pack_dvec(p->nu[k], const_cast<double*>(states_k+p->nx[k]), 1, &v, 0);
+        blasfeo_pack_dvec(p->nu[k], const_cast<double*>(inputs_k), 1, &v, 0);
         blasfeo_pack_dvec(p->nx[k], const_cast<double*>(states_k), 1, &v, p->nu[k]);
         blasfeo_pack_dvec(1, &one, 1, &v, p->nu[k]+p->nx[k]);
+
+
+        //printf("r\n");
+        //blasfeo_print_dvec(p->nx[k+1], &r, 0);
 
         //printf("v\n");
         //blasfeo_print_dvec(p->nx[k]+p->nu[k]+1, &v, 0);
@@ -505,12 +509,23 @@ class CasadiStructuredQP : public fatrop::OCPAbstract {
           &r, 0);
 
         //printf("r\n");
-        //blasfeo_print_dvec(p->nx[k+1], &v, 0);
+        // blasfeo_print_dvec(p->nx[k+1], &r, 0);
 
         std::vector<double> mem(p->nx[k+1]);
         blasfeo_unpack_dvec(p->nx[k+1], &r, 0, get_ptr(mem), 1);
+       
+        //std::cout << "mem" << mem << std::endl;
 
-        blasfeo_pack_tran_dmat(1, p->nx[k+1], get_ptr(mem), 1, res, p->nx[k]+p->nu[k], 0);
+        if (states_kp1) {
+          //printf("states_kp1 %e %e %e\n", states_kp1[0], states_kp1[1], states_kp1[2]);
+          for (int i=0;i<p->nx[k+1];++i) {
+            mem[i] -= states_kp1[i];
+          }
+        }
+
+        blasfeo_pack_dmat(1, p->nx[k+1], get_ptr(mem), 1, res, p->nx[k]+p->nu[k], 0);
+
+        //blasfeo_print_dmat(p->nx[k]+p->nu[k]+1, p->nx[k+1], res, 0, 0);
 
         blasfeo_free_dvec(&v);
         blasfeo_free_dvec(&r);
@@ -560,6 +575,20 @@ class CasadiStructuredQP : public fatrop::OCPAbstract {
         blasfeo_pack_dmat(1, p->nx[k], const_cast<double*>(d_qp->g+p->RSQ[k].offset_r), 1, res, p->nu[k]+p->nx[k], p->nu[k]);
         blasfeo_pack_dmat(1, p->nu[k], const_cast<double*>(d_qp->g+p->RSQ[k].offset_r+p->nx[k]), 1, res, p->nu[k]+p->nx[k], 0);
 
+        blasfeo_dvec r, v;
+        blasfeo_allocate_dvec(n, &v);
+        blasfeo_allocate_dvec(p->nx[k]+p->nu[k], &r);
+        // Fill v with [u;x]
+        blasfeo_pack_dvec(p->nu[k], const_cast<double*>(inputs_k), 1, &v, 0);
+        blasfeo_pack_dvec(p->nx[k], const_cast<double*>(states_k), 1, &v, p->nu[k]);
+
+        blasfeo_pack_dvec(p->nx[k], const_cast<double*>(d_qp->g+p->RSQ[k].offset_r), 1, &r, p->nu[k]);
+        blasfeo_pack_dvec(p->nu[k], const_cast<double*>(d_qp->g+p->RSQ[k].offset_r+p->nx[k]), 1, &r, 0);
+
+        blasfeo_dgemv_n(n, n, 1.0, res, 0, 0,
+          &v, 0,
+          1.0, &r, 0,
+          &r, 0);
 
         int n_a_eq = d->a_eq_idx[k+1]-d->a_eq_idx[k];
         int n_x_eq = d->x_eq_idx[k+1]-d->x_eq_idx[k];
@@ -570,9 +599,8 @@ class CasadiStructuredQP : public fatrop::OCPAbstract {
 
         bool last_k = k==solver.N_;
 
-        blasfeo_dvec r, lam_dyn, lam_g, lam_g_ineq;
+        blasfeo_dvec lam_dyn, lam_g, lam_g_ineq;
         blasfeo_dmat BAbtk, Ggtk, Ggt_ineqk;
-        blasfeo_allocate_dvec(p->nx[k]+p->nu[k], &r);
         if (!last_k)
           blasfeo_allocate_dvec(p->nx[k+1], &lam_dyn);
         blasfeo_allocate_dvec(ng_eq, &lam_g);
@@ -586,9 +614,6 @@ class CasadiStructuredQP : public fatrop::OCPAbstract {
           eval_BAbtk(0, inputs_k, states_k, stage_params_k, global_params, &BAbtk, k);
         eval_Ggtk(inputs_k, states_k, stage_params_k, global_params, &Ggtk, k);
         eval_Ggt_ineqk(inputs_k, states_k, stage_params_k, global_params, &Ggt_ineqk, k);
-
-        blasfeo_pack_dvec(p->nx[k], const_cast<double*>(d_qp->g+p->RSQ[k].offset_r), 1, &r, p->nu[k]);
-        blasfeo_pack_dvec(p->nu[k], const_cast<double*>(d_qp->g+p->RSQ[k].offset_r+p->nx[k]), 1, &r, 0);
 
         if (!last_k)
           blasfeo_pack_dvec(p->nx[k+1], const_cast<double*>(lam_dyn_k), 1, &lam_dyn, 0);
@@ -626,6 +651,7 @@ class CasadiStructuredQP : public fatrop::OCPAbstract {
           blasfeo_free_dvec(&lam_dyn);
         blasfeo_free_dvec(&lam_g);
         blasfeo_free_dvec(&lam_g_ineq);
+        blasfeo_free_dvec(&v);
 
         //blasfeo_print_dmat(n+1, n, res, 0, 0);
       }
@@ -673,23 +699,31 @@ class CasadiStructuredQP : public fatrop::OCPAbstract {
       blasfeo_pack_tran_dmat(1, 1, &v, 1, res, p->nx[k]+p->nu[k], column);
       column++;
     }
+
+    //blasfeo_print_dmat(p->nx[k]+p->nu[k]+1, ng_eq,  res, 0, 0);
     // Second part
     blasfeo_dvec v, r;
     blasfeo_allocate_dvec(p->nx[k]+p->nu[k]+1, &v);
     blasfeo_allocate_dvec(ng_eq, &r);
     // Fill v with [u;x;1]
-    blasfeo_pack_dvec(p->nu[k], const_cast<double*>(states_k+p->nx[k]), 1, &v, 0);
+    blasfeo_pack_dvec(p->nu[k], const_cast<double*>(inputs_k), 1, &v, 0);
     blasfeo_pack_dvec(p->nx[k], const_cast<double*>(states_k), 1, &v, p->nu[k]);
     blasfeo_pack_dvec(1, &one, 1, &v, p->nu[k]+p->nx[k]);
+
+    //printf("v\n");
+    //blasfeo_print_dvec(p->nx[k]+p->nu[k]+1, &v, 0);
 
     blasfeo_dgemv_t(p->nx[k]+p->nu[k]+1, ng_eq, 1.0, res, 0, 0,
       &v, 0,
       0.0, &r, 0,
       &r, 0);
+
+    //printf("r\n");
+    //blasfeo_print_dvec(ng_eq, &r, 0);
     std::vector<double> mem(ng_eq);
     blasfeo_unpack_dvec(ng_eq, &r, 0, get_ptr(mem), 1);
 
-    blasfeo_pack_tran_dmat(1, ng_eq, get_ptr(mem), 1, res, p->nx[k]+p->nu[k], 0);
+    blasfeo_pack_dmat(1, ng_eq, get_ptr(mem), 1, res, p->nx[k]+p->nu[k], 0);
 
     blasfeo_free_dvec(&v);
     blasfeo_free_dvec(&r);
@@ -744,8 +778,8 @@ class CasadiStructuredQP : public fatrop::OCPAbstract {
     blasfeo_dvec v, r;
     blasfeo_allocate_dvec(p->nx[k]+p->nu[k]+1, &v);
     blasfeo_allocate_dvec(ng_ineq, &r);
-    // Fill v with [u;x;10]
-    blasfeo_pack_dvec(p->nu[k], const_cast<double*>(states_k+p->nx[k]), 1, &v, 0);
+    // Fill v with [u;x;1]
+    blasfeo_pack_dvec(p->nu[k], const_cast<double*>(inputs_k), 1, &v, 0);
     blasfeo_pack_dvec(p->nx[k], const_cast<double*>(states_k), 1, &v, p->nu[k]);
     blasfeo_pack_dvec(1, &zero, 1, &v, p->nu[k]+p->nx[k]);
 
@@ -758,7 +792,7 @@ class CasadiStructuredQP : public fatrop::OCPAbstract {
     std::vector<double> mem(ng_ineq);
     blasfeo_unpack_dvec(ng_ineq, &r, 0, get_ptr(mem), 1);
 
-    blasfeo_pack_tran_dmat(1, ng_ineq, get_ptr(mem), 1, res, p->nx[k]+p->nu[k], 0);
+    blasfeo_pack_dmat(1, ng_ineq, get_ptr(mem), 1, res, p->nx[k]+p->nu[k], 0);
 
     blasfeo_free_dvec(&v);
     blasfeo_free_dvec(&r);
@@ -794,11 +828,6 @@ class CasadiStructuredQP : public fatrop::OCPAbstract {
         blasfeo_free_dmat(&BAbtk);
 
         //std::cout << std::vector<double>(states_kp1,states_kp1+p->nx[k+1]) << std::endl;
-
-        for (int i=0;i<p->nx[k+1];++i) {
-          res[i] -= states_kp1[i];
-        }
-
         /*printf("[");
         for (int i=0;i<p->nx[k+1];++i) {
             printf("%e ", res[i]);
@@ -831,7 +860,7 @@ class CasadiStructuredQP : public fatrop::OCPAbstract {
 
     blasfeo_dmat Ggtk;
     blasfeo_allocate_dmat(p->nx[k]+p->nu[k]+1, ng_eq, &Ggtk);
-    eval_Ggtk(inputs_k, states_k, stage_params_k, global_params, &Ggtk, k);
+    eval_Ggtk(states_k, inputs_k, stage_params_k, global_params, &Ggtk, k);
     blasfeo_unpack_dmat(1, ng_eq, &Ggtk, p->nx[k]+p->nu[k], 0, res, 1);
     blasfeo_free_dmat(&Ggtk);
 
@@ -869,7 +898,7 @@ class CasadiStructuredQP : public fatrop::OCPAbstract {
 
     blasfeo_dmat Ggtk;
     blasfeo_allocate_dmat(p->nx[k]+p->nu[k]+1, ng_ineq, &Ggtk);
-    eval_Ggt_ineqk(inputs_k, states_k, stage_params_k, global_params, &Ggtk, k);
+    eval_Ggt_ineqk(states_k, inputs_k, stage_params_k, global_params, &Ggtk, k);
     blasfeo_unpack_dmat(1, ng_ineq, &Ggtk, p->nx[k]+p->nu[k], 0, res, 1);
     blasfeo_free_dmat(&Ggtk);
 
@@ -897,20 +926,41 @@ class CasadiStructuredQP : public fatrop::OCPAbstract {
       const double *global_params,
       double *res,
       const fatrop_int k) override {
-
-
+      *res = 0.0;
       casadi_assert_dev(*objective_scale==1);
-      //printf("eval_rqk k=%d\n", k);
       auto d = &m->d;
       auto p = d->prob;
-      casadi_copy(d->qp->g+p->RSQ[k].offset_r, p->nx[k], res+p->nu[k]);
-      casadi_copy(d->qp->g+p->RSQ[k].offset_r+p->nx[k], p->nu[k], res);
+      casadi_qp_data<double>* d_qp = d->qp;
+      blasfeo_dmat RSQrqtk;
 
-      /*printf("[");
-      for (int i=0;i<p->nx[k]+p->nu[k];++i) {
-          printf("%e ", res[i]);
-      }
-      printf("]\n");*/
+      int n = p->nx[k]+p->nu[k];
+
+      blasfeo_dvec v, r;
+      blasfeo_allocate_dmat(n, n, &RSQrqtk);
+      blasfeo_allocate_dvec(n, &v);
+      blasfeo_allocate_dvec(n, &r);
+      blasfeo_pack_dmat(p->nx[k], p->nx[k], d->RSQ+p->RSQ_offsets[k], n, &RSQrqtk, p->nu[k], p->nu[k]);
+      blasfeo_pack_dmat(p->nu[k], p->nu[k], d->RSQ+p->RSQ_offsets[k]+p->nx[k]*n+p->nx[k], n, &RSQrqtk, 0, 0);
+      blasfeo_pack_dmat(p->nu[k], p->nx[k], d->RSQ+p->RSQ_offsets[k]+p->nx[k], n, &RSQrqtk, 0, p->nu[k]);
+      blasfeo_pack_dmat(p->nx[k], p->nu[k], d->RSQ+p->RSQ_offsets[k]+p->nx[k]*n, n, &RSQrqtk, p->nu[k], 0);
+
+      // Fill v with [u;x]
+      blasfeo_pack_dvec(p->nu[k], const_cast<double*>(inputs_k), 1, &v, 0);
+      blasfeo_pack_dvec(p->nx[k], const_cast<double*>(states_k), 1, &v, p->nu[k]);
+
+      blasfeo_pack_dvec(p->nx[k], const_cast<double*>(d_qp->g+p->RSQ[k].offset_r), 1, &r, p->nu[k]);
+      blasfeo_pack_dvec(p->nu[k], const_cast<double*>(d_qp->g+p->RSQ[k].offset_r+p->nx[k]), 1, &r, 0);
+      
+      blasfeo_dgemv_n(n, n, 1.0, &RSQrqtk, 0, 0,
+        &v, 0,
+        1.0, &r, 0,
+        &r, 0);
+      
+      blasfeo_unpack_dvec(n, &r, 0, res, 1);
+
+      blasfeo_free_dmat(&RSQrqtk);
+      blasfeo_free_dvec(&v);
+      blasfeo_free_dvec(&r);
   }
   /// @brief objective function value 
   /// @param objective_scale: pointer to array objective scale
@@ -930,6 +980,42 @@ class CasadiStructuredQP : public fatrop::OCPAbstract {
       const fatrop_int k) override {
       *res = 0.0;
       casadi_assert_dev(*objective_scale==1);
+      auto d = &m->d;
+      auto p = d->prob;
+      casadi_qp_data<double>* d_qp = d->qp;
+      blasfeo_dmat RSQrqtk;
+
+      int n = p->nx[k]+p->nu[k];
+
+      blasfeo_dvec v, r;
+      blasfeo_allocate_dmat(n, n, &RSQrqtk);
+      blasfeo_allocate_dvec(n, &v);
+      blasfeo_allocate_dvec(n, &r);
+      blasfeo_pack_dmat(p->nx[k], p->nx[k], d->RSQ+p->RSQ_offsets[k], n, &RSQrqtk, p->nu[k], p->nu[k]);
+      blasfeo_pack_dmat(p->nu[k], p->nu[k], d->RSQ+p->RSQ_offsets[k]+p->nx[k]*n+p->nx[k], n, &RSQrqtk, 0, 0);
+      blasfeo_pack_dmat(p->nu[k], p->nx[k], d->RSQ+p->RSQ_offsets[k]+p->nx[k], n, &RSQrqtk, 0, p->nu[k]);
+      blasfeo_pack_dmat(p->nx[k], p->nu[k], d->RSQ+p->RSQ_offsets[k]+p->nx[k]*n, n, &RSQrqtk, p->nu[k], 0);
+
+      // Fill v with [u;x]
+      blasfeo_pack_dvec(p->nu[k], const_cast<double*>(inputs_k), 1, &v, 0);
+      blasfeo_pack_dvec(p->nx[k], const_cast<double*>(states_k), 1, &v, p->nu[k]);
+      
+      blasfeo_dgemv_n(n, n, 1.0, &RSQrqtk, 0, 0,
+        &v, 0,
+        0.0, &r, 0,
+        &r, 0);
+
+      double obj = 0.5*blasfeo_ddot(n, &v, 0, &r, 0);
+
+      blasfeo_pack_dvec(p->nx[k], const_cast<double*>(d_qp->g+p->RSQ[k].offset_r), 1, &r, p->nu[k]);
+      blasfeo_pack_dvec(p->nu[k], const_cast<double*>(d_qp->g+p->RSQ[k].offset_r+p->nx[k]), 1, &r, 0);
+
+      obj += blasfeo_ddot(n, &v, 0, &r, 0);
+
+      blasfeo_free_dmat(&RSQrqtk);
+      blasfeo_free_dvec(&v);
+      blasfeo_free_dvec(&r);
+      *res = obj;
       //printf("eval_Lk k=%d %e\n", k, *res);
   }
   /// @brief the bounds of the inequalites at stage k
@@ -974,7 +1060,6 @@ class CasadiStructuredQP : public fatrop::OCPAbstract {
     auto d = &m->d;
     auto p = d->prob;
     casadi_qp_data<double>* d_qp = d->qp;
-    if (k==p->N) return 0;
     casadi_copy(d_qp->x0+p->CD[k].offset_c, p->nx[k], xk);
   }
   /// @brief default initial guess for the inputs of stage k
@@ -985,7 +1070,6 @@ class CasadiStructuredQP : public fatrop::OCPAbstract {
     auto d = &m->d;
     auto p = d->prob;
     casadi_qp_data<double>* d_qp = d->qp;
-    if (k==p->N) return 0;
     casadi_copy(d_qp->x0+p->CD[k].offset_c+p->nx[k], p->nu[k], uk);
   }
 
@@ -1008,6 +1092,41 @@ class CasadiStructuredQP : public fatrop::OCPAbstract {
     app.build();
 
     app.optimize();
+
+
+    blasfeo_dvec* primal = static_cast<blasfeo_dvec*>(app.last_solution_primal());
+    blasfeo_dvec* dual = static_cast<blasfeo_dvec*>(app.last_solution_dual());
+
+    auto d = &m->d;
+    auto p = d->prob;
+    casadi_qp_data<double>* d_qp = d->qp;
+
+    casadi_int offset_fatrop = 0;
+    casadi_int offset_casadi = 0;
+    for (int k=0;k<N_+1;++k) {
+      blasfeo_unpack_dvec(p->nu[k], primal, offset_fatrop, d_qp->x+offset_casadi+p->nx[k], 1);
+      offset_fatrop += p->nu[k];
+      blasfeo_unpack_dvec(p->nx[k], primal, offset_fatrop, d_qp->x+offset_casadi, 1);
+      offset_fatrop += p->nx[k];
+      offset_casadi += p->nx[k]+p->nu[k];
+    }
+
+    m->d_qp.success = true;
+
+    /**for (int k=0;k<N_+1;++k) {
+      for (i=d->x_eq_idx[k];i<d->x_eq_idx[k+1];++i) {
+        blasfeo_unpack_dvec();
+        blasfeo_pack_tran_dmat(1, 1, &one, 1, res, d->x_eq[i]-p->CD[k].offset_c, column);
+        double v = -d_qp->lbx[d->x_eq[i]];
+        blasfeo_pack_tran_dmat(1, 1, &v, 1, res, p->nx[k]+p->nu[k], column);
+        column++;
+      }
+    }*/
+
+    //const fatrop::FatropVecBF& primal = app.last_solution_primal();
+    //const fatrop::FatropVecBF& dual = app.last_solution_dual();
+
+    //primal.vec_;
 
     m->fstats.at("solver").toc();
 
