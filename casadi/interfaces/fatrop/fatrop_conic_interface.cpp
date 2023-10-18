@@ -416,7 +416,7 @@ class CasadiStructuredQP : public fatrop::OCPAbstract {
   /// @brief number of inputs for time step k
   /// @param k: time step
   fatrop_int get_nuk(const fatrop_int k) const override {
-    printf("get_nuk k=%d %d\n", k, solver.nus_[k]);
+    //printf("get_nuk k=%d %d\n", k, solver.nus_[k]);
     return solver.nus_[k];
   };
   /// @brief number of equality constraints for time step k
@@ -429,7 +429,7 @@ class CasadiStructuredQP : public fatrop::OCPAbstract {
     fatrop_int n_x_eq = d->x_eq_idx[k+1]-d->x_eq_idx[k];
 
     ret = n_a_eq+n_x_eq;
-    printf("get_ngk k=%d: %d\n", k, ret);
+    //printf("get_ngk k=%d: %d\n", k, ret);
     return ret;
   };
   /// @brief  number of stage parameters for time step k
@@ -482,11 +482,11 @@ class CasadiStructuredQP : public fatrop::OCPAbstract {
         auto d = &m->d;
         auto p = d->prob;
         casadi_qp_data<double>* d_qp = d->qp;
-        printf("eval_BAbtk k=%d\n", k);
+        //printf("eval_BAbtk k=%d\n", k);
         blasfeo_pack_tran_dmat(p->nx[k+1], p->nx[k], d->AB+p->AB_offsets[k], p->nx[k+1], res, p->nu[k], 0);
         blasfeo_pack_tran_dmat(p->nx[k+1], p->nu[k], d->AB+p->AB_offsets[k]+p->nx[k]*p->nx[k+1], p->nx[k+1], res, 0, 0);
         blasfeo_pack_dmat(1, p->nx[k+1], const_cast<double*>(d_qp->lba+p->AB[k].offset_r), 1, res, p->nx[k]+p->nu[k], 0);
-        blasfeo_print_dmat(p->nx[k]+p->nu[k]+1, p->nx[k+1], res, 0, 0);
+        //blasfeo_print_dmat(p->nx[k]+p->nu[k]+1, p->nx[k+1], res, 0, 0);
 
         blasfeo_dvec v, r;
         blasfeo_allocate_dvec(p->nx[k]+p->nu[k]+1, &v);
@@ -496,16 +496,16 @@ class CasadiStructuredQP : public fatrop::OCPAbstract {
         blasfeo_pack_dvec(p->nx[k], const_cast<double*>(states_k), 1, &v, p->nu[k]);
         blasfeo_pack_dvec(1, &one, 1, &v, p->nu[k]+p->nx[k]);
 
-        printf("v\n");
-        blasfeo_print_dvec(p->nx[k]+p->nu[k]+1, &v, 0);
+        //printf("v\n");
+        //blasfeo_print_dvec(p->nx[k]+p->nu[k]+1, &v, 0);
 
         blasfeo_dgemv_t(p->nx[k]+p->nu[k]+1, p->nx[k+1], 1.0, res, 0, 0,
           &v, 0,
           0.0, &r, 0,
           &r, 0);
 
-        printf("r\n");
-        blasfeo_print_dvec(p->nx[k+1], &v, 0);
+        //printf("r\n");
+        //blasfeo_print_dvec(p->nx[k+1], &v, 0);
 
         std::vector<double> mem(p->nx[k+1]);
         blasfeo_unpack_dvec(p->nx[k+1], &r, 0, get_ptr(mem), 1);
@@ -543,10 +543,13 @@ class CasadiStructuredQP : public fatrop::OCPAbstract {
       MAT *res,
       const fatrop_int k) override {
 
+        casadi_assert_dev(*objective_scale==1);
+
         auto d = &m->d;
         auto p = d->prob;
         casadi_qp_data<double>* d_qp = d->qp;
-        printf("eval_RSQrqtk k=%d %d\n", k, p->nu[k]);
+        //printf("eval_RSQrqtk k=%d %d\n", k, p->nu[k]);
+        //std::cout << "states_k" << std::vector<double>(states_k, states_k+p->nx[k]) << std::endl;
         int n = p->nx[k]+p->nu[k];
         //blasfeo_pack_dmat(n, n, d->RSQ+p->RSQ_offsets[k], n, res, 0, 0);
         blasfeo_pack_dmat(p->nx[k], p->nx[k], d->RSQ+p->RSQ_offsets[k], n, res, p->nu[k], p->nu[k]);
@@ -557,7 +560,74 @@ class CasadiStructuredQP : public fatrop::OCPAbstract {
         blasfeo_pack_dmat(1, p->nx[k], const_cast<double*>(d_qp->g+p->RSQ[k].offset_r), 1, res, p->nu[k]+p->nx[k], p->nu[k]);
         blasfeo_pack_dmat(1, p->nu[k], const_cast<double*>(d_qp->g+p->RSQ[k].offset_r+p->nx[k]), 1, res, p->nu[k]+p->nx[k], 0);
 
-        blasfeo_print_dmat(n+1, n, res, 0, 0);
+
+        int n_a_eq = d->a_eq_idx[k+1]-d->a_eq_idx[k];
+        int n_x_eq = d->x_eq_idx[k+1]-d->x_eq_idx[k];
+        int ng_eq = n_a_eq+n_x_eq;
+        int n_a_ineq = d->a_ineq_idx[k+1]-d->a_ineq_idx[k];
+        int n_x_ineq = d->x_ineq_idx[k+1]-d->x_ineq_idx[k];
+        int ng_ineq = n_a_ineq+n_x_ineq;
+
+        bool last_k = k==solver.N_;
+
+        blasfeo_dvec r, lam_dyn, lam_g, lam_g_ineq;
+        blasfeo_dmat BAbtk, Ggtk, Ggt_ineqk;
+        blasfeo_allocate_dvec(p->nx[k]+p->nu[k], &r);
+        if (!last_k)
+          blasfeo_allocate_dvec(p->nx[k+1], &lam_dyn);
+        blasfeo_allocate_dvec(ng_eq, &lam_g);
+        blasfeo_allocate_dvec(ng_ineq, &lam_g_ineq);
+        if (!last_k)
+          blasfeo_allocate_dmat(p->nx[k]+p->nu[k]+1, p->nx[k+1], &BAbtk);
+        blasfeo_allocate_dmat(p->nx[k]+p->nu[k]+1, ng_eq, &Ggtk);
+        blasfeo_allocate_dmat(p->nx[k]+p->nu[k]+1, ng_ineq, &Ggt_ineqk);
+
+        if (!last_k)
+          eval_BAbtk(0, inputs_k, states_k, stage_params_k, global_params, &BAbtk, k);
+        eval_Ggtk(inputs_k, states_k, stage_params_k, global_params, &Ggtk, k);
+        eval_Ggt_ineqk(inputs_k, states_k, stage_params_k, global_params, &Ggt_ineqk, k);
+
+        blasfeo_pack_dvec(p->nx[k], const_cast<double*>(d_qp->g+p->RSQ[k].offset_r), 1, &r, p->nu[k]);
+        blasfeo_pack_dvec(p->nu[k], const_cast<double*>(d_qp->g+p->RSQ[k].offset_r+p->nx[k]), 1, &r, 0);
+
+        if (!last_k)
+          blasfeo_pack_dvec(p->nx[k+1], const_cast<double*>(lam_dyn_k), 1, &lam_dyn, 0);
+        blasfeo_pack_dvec(ng_eq, const_cast<double*>(lam_eq_k), 1, &lam_g, 0);
+        blasfeo_pack_dvec(ng_ineq, const_cast<double*>(lam_eq_ineq_k), 1, &lam_g_ineq, 0);
+
+        if (!last_k)
+          blasfeo_dgemv_n(p->nx[k]+p->nu[k], p->nx[k+1], 1.0, &BAbtk, 0, 0,
+            &lam_dyn, 0,
+            1.0, &r, 0,
+            &r, 0);
+
+        blasfeo_dgemv_n(p->nx[k]+p->nu[k], ng_eq, 1.0, &Ggtk, 0, 0,
+          &lam_g, 0,
+          1.0, &r, 0,
+          &r, 0);
+
+        blasfeo_dgemv_n(p->nx[k]+p->nu[k], ng_ineq, 1.0, &Ggt_ineqk, 0, 0,
+          &lam_g_ineq, 0,
+          1.0, &r, 0,
+          &r, 0);
+
+        std::vector<double> mem(p->nx[k]+p->nu[k]);
+        blasfeo_unpack_dvec(p->nx[k]+p->nu[k], &r, 0, get_ptr(mem), 1);
+
+        blasfeo_pack_dmat(1, p->nx[k]+p->nu[k], const_cast<double*>(get_ptr(mem)), 1, res, p->nu[k]+p->nx[k], 0);
+
+
+        if (!last_k)
+          blasfeo_free_dmat(&BAbtk);
+        blasfeo_free_dmat(&Ggtk);
+        blasfeo_free_dmat(&Ggt_ineqk);
+        blasfeo_free_dvec(&r);
+        if (!last_k)
+          blasfeo_free_dvec(&lam_dyn);
+        blasfeo_free_dvec(&lam_g);
+        blasfeo_free_dvec(&lam_g_ineq);
+
+        //blasfeo_print_dmat(n+1, n, res, 0, 0);
       }
   /// @brief stagewise equality constraints Jacobian. 
   /// It evaluates the vertical concatenation of (1) the Jacobian of the equality constraints to the concatenation of (u_k, x_k) (2) the equality constraints evaluated at u_k, x_k.
@@ -578,7 +648,7 @@ class CasadiStructuredQP : public fatrop::OCPAbstract {
       const fatrop_int k) override {
     casadi_int i, column;
     double one = 1;
-    printf("eval_Ggtk k=%d\n", k);
+    //printf("eval_Ggtk k=%d\n", k);
     auto d = &m->d;
     auto p = d->prob;
     casadi_qp_data<double>* d_qp = d->qp;
@@ -624,7 +694,7 @@ class CasadiStructuredQP : public fatrop::OCPAbstract {
     blasfeo_free_dvec(&v);
     blasfeo_free_dvec(&r);
 
-    blasfeo_print_dmat(p->nx[k]+p->nu[k]+1, ng_eq,  res, 0, 0);
+    //blasfeo_print_dmat(p->nx[k]+p->nu[k]+1, ng_eq,  res, 0, 0);
   }
   /// @brief stagewise inequality constraints Jacobian. 
   /// It evaluates the vertical concatenation of (1) the Jacobian of the inequality constraints to the concatenation of (u_k, x_k) (2) the inequality constraints evaluated at u_k, x_k. 
@@ -646,7 +716,7 @@ class CasadiStructuredQP : public fatrop::OCPAbstract {
     casadi_int i, column;
     double one = 1;
     double zero = 0;
-    printf("eval_Ggt_ineqk k=%d\n", k);
+    //printf("eval_Ggt_ineqk k=%d\n", k);
     auto d = &m->d;
     auto p = d->prob;
     casadi_qp_data<double>* d_qp = d->qp;
@@ -693,7 +763,7 @@ class CasadiStructuredQP : public fatrop::OCPAbstract {
     blasfeo_free_dvec(&v);
     blasfeo_free_dvec(&r);
 
-    blasfeo_print_dmat(p->nx[k]+p->nu[k]+1, ng_ineq,  res, 0, 0);
+    //blasfeo_print_dmat(p->nx[k]+p->nu[k]+1, ng_ineq,  res, 0, 0);
   }
   /// @brief the dynamics constraint violation (b_k = -x_{k+1} + f_k(u_k, x_k, p_k, p))
   /// @param states_kp1: pointer to array states of time step k+1
@@ -713,7 +783,7 @@ class CasadiStructuredQP : public fatrop::OCPAbstract {
       double *res,
       const fatrop_int k) override {
         double one = 1;
-        printf("eval_bk k=%d\n", k);
+        //printf("eval_bk k=%d\n", k);
         auto d = &m->d;
         auto p = d->prob;
 
@@ -723,17 +793,17 @@ class CasadiStructuredQP : public fatrop::OCPAbstract {
         blasfeo_unpack_dmat(1, p->nx[k+1], &BAbtk, p->nx[k]+p->nu[k], 0, res, 1);
         blasfeo_free_dmat(&BAbtk);
 
-        std::cout << std::vector<double>(states_kp1,states_kp1+p->nx[k+1]) << std::endl;
+        //std::cout << std::vector<double>(states_kp1,states_kp1+p->nx[k+1]) << std::endl;
 
         for (int i=0;i<p->nx[k+1];++i) {
           res[i] -= states_kp1[i];
         }
 
-        printf("[");
+        /*printf("[");
         for (int i=0;i<p->nx[k+1];++i) {
             printf("%e ", res[i]);
         }
-        printf("]\n");
+        printf("]\n");*/
 
       }
   /// @brief the equality constraint violation (g_k = g_k(u_k, x_k, p_k, p))
@@ -751,7 +821,7 @@ class CasadiStructuredQP : public fatrop::OCPAbstract {
       double *res,
       const fatrop_int k) override {
     double one = 1;
-    printf("eval_gk k=%d\n", k);
+    //printf("eval_gk k=%d\n", k);
     auto d = &m->d;
     auto p = d->prob;
 
@@ -765,11 +835,11 @@ class CasadiStructuredQP : public fatrop::OCPAbstract {
     blasfeo_unpack_dmat(1, ng_eq, &Ggtk, p->nx[k]+p->nu[k], 0, res, 1);
     blasfeo_free_dmat(&Ggtk);
 
-    printf("[");
+    /*printf("[");
     for (int i=0;i<ng_eq;++i) {
         printf("%e ", res[i]);
     }
-    printf("]\n");
+    printf("]\n");*/
     
     
   }
@@ -788,7 +858,7 @@ class CasadiStructuredQP : public fatrop::OCPAbstract {
       double *res,
       const fatrop_int k)  override {
     double one = 1;
-    printf("eval_gineqk k=%d\n", k);
+    //printf("eval_gineqk k=%d\n", k);
     auto d = &m->d;
     auto p = d->prob;
 
@@ -803,11 +873,11 @@ class CasadiStructuredQP : public fatrop::OCPAbstract {
     blasfeo_unpack_dmat(1, ng_ineq, &Ggtk, p->nx[k]+p->nu[k], 0, res, 1);
     blasfeo_free_dmat(&Ggtk);
 
-    printf("[");
+    /*printf("[");
     for (int i=0;i<ng_ineq;++i) {
         printf("%e ", res[i]);
     }
-    printf("]\n");
+    printf("]\n");*/
     
     
   }
@@ -827,17 +897,20 @@ class CasadiStructuredQP : public fatrop::OCPAbstract {
       const double *global_params,
       double *res,
       const fatrop_int k) override {
-      printf("eval_rqk k=%d\n", k);
+
+
+      casadi_assert_dev(*objective_scale==1);
+      //printf("eval_rqk k=%d\n", k);
       auto d = &m->d;
       auto p = d->prob;
       casadi_copy(d->qp->g+p->RSQ[k].offset_r, p->nx[k], res+p->nu[k]);
       casadi_copy(d->qp->g+p->RSQ[k].offset_r+p->nx[k], p->nu[k], res);
 
-      printf("[");
+      /*printf("[");
       for (int i=0;i<p->nx[k]+p->nu[k];++i) {
           printf("%e ", res[i]);
       }
-      printf("]\n");
+      printf("]\n");*/
   }
   /// @brief objective function value 
   /// @param objective_scale: pointer to array objective scale
@@ -856,7 +929,8 @@ class CasadiStructuredQP : public fatrop::OCPAbstract {
       double *res,
       const fatrop_int k) override {
       *res = 0.0;
-      printf("eval_Lk k=%d %e\n", k, *res);
+      casadi_assert_dev(*objective_scale==1);
+      //printf("eval_Lk k=%d %e\n", k, *res);
   }
   /// @brief the bounds of the inequalites at stage k
   /// @param lower: pointer to ng_ineq-vector
@@ -867,7 +941,6 @@ class CasadiStructuredQP : public fatrop::OCPAbstract {
       auto d = &m->d;
       auto p = d->prob;
       casadi_qp_data<double>* d_qp = d->qp;
-      if (k==p->N) return 0;
       int i=0;
       int column = 0;
       for (i=d->a_ineq_idx[k];i<d->a_ineq_idx[k+1];++i) {
@@ -897,7 +970,7 @@ class CasadiStructuredQP : public fatrop::OCPAbstract {
   /// @param xk: pointer to states of time step k 
   /// @param k: time step
   fatrop_int get_initial_xk(double *xk, const fatrop_int k) const override {
-    printf("get_initial_xk k=%d\n", k);
+    //printf("get_initial_xk k=%d\n", k);
     auto d = &m->d;
     auto p = d->prob;
     casadi_qp_data<double>* d_qp = d->qp;
@@ -908,7 +981,7 @@ class CasadiStructuredQP : public fatrop::OCPAbstract {
   /// @param uk: pointer to inputs of time step k
   /// @param k: time step
   fatrop_int get_initial_uk(double *uk, const fatrop_int k) const override {
-    printf("get_initial_uk k=%d\n", k);
+    //printf("get_initial_uk k=%d\n", k);
     auto d = &m->d;
     auto p = d->prob;
     casadi_qp_data<double>* d_qp = d->qp;
