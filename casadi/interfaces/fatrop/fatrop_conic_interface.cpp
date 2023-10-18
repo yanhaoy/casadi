@@ -1091,8 +1091,13 @@ class CasadiStructuredQP : public fatrop::OCPAbstract {
     fatrop::OCPApplication app(std::make_shared<casadi::CasadiStructuredQP>(qp));
     app.build();
 
-    app.optimize();
+    int ret = app.optimize();
 
+    if (ret) {
+      m->d_qp.success = false;
+      m->d.return_status = "failed";
+      return 0;
+    }
 
     // u0 x0 u1 u2 ...
     blasfeo_dvec* primal = static_cast<blasfeo_dvec*>(app.last_solution_primal());
@@ -1152,6 +1157,11 @@ class CasadiStructuredQP : public fatrop::OCPAbstract {
     //primal.vec_;
 
     m->fstats.at("solver").toc();
+
+    //fatrop::FatropStats stats = app.get_stats();
+
+    // success
+    // fail
 
 
     return 0;
