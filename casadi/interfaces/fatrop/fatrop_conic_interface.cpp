@@ -1120,6 +1120,7 @@ class CasadiStructuredQP : public fatrop::OCPAbstract {
     }
 
     m->d_qp.success = true;
+    m->d_qp.unified_return_status = SOLVER_RET_SUCCESS;
     m->d.return_status = "solved";
 
     std::vector<double> dualv(nx_+na_);
