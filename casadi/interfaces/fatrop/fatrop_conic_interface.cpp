@@ -181,11 +181,11 @@ namespace casadi {
       ngs_.push_back(cN);
 
       N_ = nus_.size();
+      nus_.push_back(0);
       if (true) {
         casadi_message("Detected structure: N " + str(N_) + ", nx " + str(nx) + ", "
           "nu " + str(nu) + ", ng " + str(ng) + ".");
       }
-      nus_.push_back(0);
     }
 
     casadi_message("Using structure: N " + str(N_) + ", nx " + str(nx) + ", "
