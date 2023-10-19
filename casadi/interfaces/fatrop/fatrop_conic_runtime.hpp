@@ -232,11 +232,11 @@ int casadi_fatrop_conic_solve(casadi_fatrop_conic_data<T1>* d, const double** ar
       uout() << "x_eq" << std::vector<double>(d->x_eq+d->x_eq_idx[k], d->x_eq+d->x_eq_idx[k+1]) << std::endl;
       uout() << "x_ineq" << std::vector<double>(d->x_ineq+d->x_ineq_idx[k], d->x_ineq+d->x_ineq_idx[k+1]) << std::endl;
 
-      uout() << "AB=" << std::vector<double>(d->AB,d->AB+100) << std::endl;
+      //uout() << "AB=" << std::vector<double>(d->AB,d->AB+100) << std::endl;
 
-      uout() << "CD=" << std::vector<double>(d->CD,d->CD+100) << std::endl;
+      //uout() << "CD=" << std::vector<double>(d->CD,d->CD+100) << std::endl;
 
-      uout() << "RSQ=" << std::vector<double>(d->RSQ,d->RSQ+100) << std::endl;
+      //uout() << "RSQ=" << std::vector<double>(d->RSQ,d->RSQ+100) << std::endl;
     }
 
 
