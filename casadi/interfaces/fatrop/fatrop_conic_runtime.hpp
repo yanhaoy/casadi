@@ -217,7 +217,7 @@ int casadi_fatrop_conic_solve(casadi_fatrop_conic_data<T1>* d, const double** ar
       d->x_ineq_idx[k+1] = d->x_ineq_idx[k];
       start = p->CD[k].offset_c;
       stop  = p->CD[k].offset_c+p->CD[k].cols;
-      uout() << "start" << start << "->" << stop << std::endl;
+      //uout() << "start" << start << "->" << stop << std::endl;
       for (i=start;i<stop;++i) {
         if (d_qp->lbx[i]==d_qp->ubx[i]) {
           d->x_eq[d->x_eq_idx[k+1]++] = i;
@@ -226,11 +226,11 @@ int casadi_fatrop_conic_solve(casadi_fatrop_conic_data<T1>* d, const double** ar
           d->x_ineq[d->x_ineq_idx[k+1]++] = i;
         }
       }
-      uout() << "k=" << k << std::endl;
-      uout() << "a_eq" << std::vector<double>(d->a_eq+d->a_eq_idx[k], d->a_eq+d->a_eq_idx[k+1]) << std::endl;
-      uout() << "a_ineq" << std::vector<double>(d->a_ineq+d->a_ineq_idx[k], d->a_ineq+d->a_ineq_idx[k+1]) << std::endl;
-      uout() << "x_eq" << std::vector<double>(d->x_eq+d->x_eq_idx[k], d->x_eq+d->x_eq_idx[k+1]) << std::endl;
-      uout() << "x_ineq" << std::vector<double>(d->x_ineq+d->x_ineq_idx[k], d->x_ineq+d->x_ineq_idx[k+1]) << std::endl;
+      //uout() << "k=" << k << std::endl;
+      //uout() << "a_eq" << std::vector<double>(d->a_eq+d->a_eq_idx[k], d->a_eq+d->a_eq_idx[k+1]) << std::endl;
+      //uout() << "a_ineq" << std::vector<double>(d->a_ineq+d->a_ineq_idx[k], d->a_ineq+d->a_ineq_idx[k+1]) << std::endl;
+      //uout() << "x_eq" << std::vector<double>(d->x_eq+d->x_eq_idx[k], d->x_eq+d->x_eq_idx[k+1]) << std::endl;
+      //uout() << "x_ineq" << std::vector<double>(d->x_ineq+d->x_ineq_idx[k], d->x_ineq+d->x_ineq_idx[k+1]) << std::endl;
 
       //uout() << "AB=" << std::vector<double>(d->AB,d->AB+100) << std::endl;
 
