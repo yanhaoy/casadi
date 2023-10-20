@@ -91,18 +91,8 @@ template<typename T1>
 struct casadi_fatrop_conic_prob {
   const casadi_qp_prob<T1>* qp;
   const int *nx, *nu, *ng;
-  const int *nbx, *nbu, *ns;
-  const int *nsbx, *nsbu, *nsg;
-  // Sparsities
-  const casadi_int *sp_x, *sp_ba;
-  const casadi_int *Asp, *Bsp, *Csp, *Dsp;
-  const casadi_int *Rsp, *Isp, *Ssp, *Qsp;
-  const casadi_int *bsp;
-  const casadi_int *xsp, *usp;
-  const casadi_int *pisp;
-  const casadi_int *theirs_xsp, *theirs_usp, *theirs_Xsp, *theirs_Usp;
-  const casadi_int *lamg_gapsp, *lugsp;
 
+  // Sparsities
   const casadi_int *ABsp;
   const casadi_int *AB_offsets;
   const casadi_int *CDsp;
@@ -110,15 +100,7 @@ struct casadi_fatrop_conic_prob {
   const casadi_int *RSQsp;
   const casadi_int *RSQ_offsets;
 
-
   casadi_int N;
-  casadi_int nx_total, nu_total, ng_total;
-  casadi_ocp_block *A, *B, *C, *D;
-  casadi_ocp_block *R, *I, *S, *Q;
-  casadi_ocp_block *b, *lug;
-  casadi_ocp_block *u, *x;
-  casadi_ocp_block *lam_ul, *lam_xl, *lam_uu, *lam_xu, *lam_cl, *lam_cu;
-
   casadi_ocp_block *AB, *CD, *RSQ;
 
   T1 warm_start;
@@ -134,32 +116,11 @@ struct casadi_fatrop_conic_data {
   const casadi_fatrop_conic_prob<T1>* prob;
   // Problem structure
   casadi_qp_data<T1>* qp;
-  T1 *A, *B, *C, *D;
-  T1 *R, *I, *Q, *S;
-  T1 *b, *b2;
-  T1 *x, *q;
-  T1 *u, *r;
-  T1 *lg, *ug;
-  T1 *pi;
-  T1 *lbx, *ubx, *lbu, *ubu, *lam;
-
-  T1 **hA, **hB, **hC, **hD;
-  T1 **hR, **hI, **hQ, **hS;
-  T1 **hx, **hq;
-  T1 **hu, **hr;
-  T1 **hlg, **hug;
-  T1 **hb;
 
   T1 *AB, *CD, *RSQ;
 
-  T1 **hZl, **hZu, **hzl, **hzu, **hlls, **hlus;
-  T1 **pis, **hlbx, **hubx, **hlbu, **hubu, **lams;
-
   casadi_int *a_eq, *a_ineq, *a_eq_idx, *a_ineq_idx;
   casadi_int *x_eq, *x_ineq, *x_eq_idx, *x_ineq_idx;
-
-  int *iidxbx, *iidxbu;
-  int **hidxbx, **hidxbu, **hidxs;
 
   int iter_count;
   const char* return_status;
@@ -240,6 +201,7 @@ int casadi_fatrop_conic_solve(casadi_fatrop_conic_data<T1>* d, const double** ar
     }
 
 
+  return 0;
 }
 
 // SYMBOL "fatrop_work"
@@ -277,7 +239,6 @@ void casadi_fatrop_conic_set_work(casadi_fatrop_conic_data<T1>* d, const T1*** a
   d->AB = *w; *w += casadi_sp_nnz(p->ABsp);
   d->CD = *w; *w += casadi_sp_nnz(p->CDsp);
   d->RSQ = *w; *w += casadi_sp_nnz(p->RSQsp);
-  d->pv = *w;
 
   d->a_eq_idx = *iw;   *iw += p->N+2;
   d->a_ineq_idx = *iw; *iw += p->N+2;
@@ -288,4 +249,7 @@ void casadi_fatrop_conic_set_work(casadi_fatrop_conic_data<T1>* d, const T1*** a
   d->a_ineq = *iw; *iw += p->qp->na;
   d->x_eq = *iw;  *iw += p->qp->nx;
   d->x_ineq = *iw; *iw += p->qp->nx;
+
+
+  d->pv = *w;
 }

@@ -561,6 +561,7 @@ class CasadiStructuredQP : public fatrop::OCPAbstract {
         blasfeo_free_dvec(&v);
         blasfeo_free_dvec(&r);
 
+        return 0;
 
       };
   /// @brief  stagewise Lagrangian Hessian
@@ -685,6 +686,8 @@ class CasadiStructuredQP : public fatrop::OCPAbstract {
         blasfeo_free_dvec(&v);
 
         //blasfeo_print_dmat(n+1, n, res, 0, 0);
+
+        return 0;
       }
   /// @brief stagewise equality constraints Jacobian. 
   /// It evaluates the vertical concatenation of (1) the Jacobian of the equality constraints to the concatenation of (u_k, x_k) (2) the equality constraints evaluated at u_k, x_k.
@@ -778,6 +781,7 @@ class CasadiStructuredQP : public fatrop::OCPAbstract {
     blasfeo_free_dvec(&r);
 
     //blasfeo_print_dmat(p->nx[k]+p->nu[k]+1, ng_eq,  res, 0, 0);
+    return 0;
   }
   /// @brief stagewise inequality constraints Jacobian. 
   /// It evaluates the vertical concatenation of (1) the Jacobian of the inequality constraints to the concatenation of (u_k, x_k) (2) the inequality constraints evaluated at u_k, x_k. 
@@ -857,6 +861,7 @@ class CasadiStructuredQP : public fatrop::OCPAbstract {
     blasfeo_free_dvec(&r);
 
     //blasfeo_print_dmat(p->nx[k]+p->nu[k]+1, ng_ineq,  res, 0, 0);
+    return 0;
   }
   /// @brief the dynamics constraint violation (b_k = -x_{k+1} + f_k(u_k, x_k, p_k, p))
   /// @param states_kp1: pointer to array states of time step k+1
@@ -892,6 +897,8 @@ class CasadiStructuredQP : public fatrop::OCPAbstract {
             //printf("%e ", res[i]);
         }
         //printf("]\n");*/
+
+        return 0;
 
       }
   /// @brief the equality constraint violation (g_k = g_k(u_k, x_k, p_k, p))
@@ -930,6 +937,8 @@ class CasadiStructuredQP : public fatrop::OCPAbstract {
         //printf("%e ", res[i]);
     }
     //printf("]\n");*/
+
+    return 0;
     
     
   }
@@ -968,6 +977,8 @@ class CasadiStructuredQP : public fatrop::OCPAbstract {
         //printf("%e ", res[i]);
     }
     //printf("]\n");*/
+
+    return 0;
     
     
   }
@@ -1022,6 +1033,8 @@ class CasadiStructuredQP : public fatrop::OCPAbstract {
       blasfeo_free_dmat(&RSQrqtk);
       blasfeo_free_dvec(&v);
       blasfeo_free_dvec(&r);
+
+      return 0;
   }
   /// @brief objective function value 
   /// @param objective_scale: pointer to array objective scale
@@ -1078,6 +1091,8 @@ class CasadiStructuredQP : public fatrop::OCPAbstract {
       blasfeo_free_dvec(&r);
       *res = obj;
       ////printf("eval_Lk k=%d %e\n", k, *res);
+
+      return 0;
   }
   /// @brief the bounds of the inequalites at stage k
   /// @param lower: pointer to ng_ineq-vector
@@ -1112,6 +1127,8 @@ class CasadiStructuredQP : public fatrop::OCPAbstract {
       //printf("upper: [");
       //for (int i=0;i<ng_ineq;++i) //printf("%e ", upper[i]);
       //printf("]\n");
+
+      return 0;
   }
   /// @brief default initial guess for the states of stage k
   /// @param xk: pointer to states of time step k 
@@ -1122,6 +1139,8 @@ class CasadiStructuredQP : public fatrop::OCPAbstract {
     auto p = d->prob;
     casadi_qp_data<double>* d_qp = d->qp;
     casadi_copy(d_qp->x0+p->CD[k].offset_c, p->nx[k], xk);
+
+    return 0;
   }
   /// @brief default initial guess for the inputs of stage k
   /// @param uk: pointer to inputs of time step k
@@ -1132,6 +1151,7 @@ class CasadiStructuredQP : public fatrop::OCPAbstract {
     auto p = d->prob;
     casadi_qp_data<double>* d_qp = d->qp;
     casadi_copy(d_qp->x0+p->CD[k].offset_c+p->nx[k], p->nu[k], uk);
+    return 0;
   }
 
 };
