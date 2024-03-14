@@ -3821,7 +3821,7 @@ namespace casadi {
     s.pack("ProtoFunction::print_time", print_time_);
     s.pack("ProtoFunction::record_time", record_time_);
     s.pack("ProtoFunction::regularity_check", regularity_check_);
-    s.pack("ProtoFunction::error_on_fail", error_on_fail_);
+    //s.pack("ProtoFunction::error_on_fail", error_on_fail_);
   }
 
   ProtoFunction::ProtoFunction(DeserializingStream& s) {
@@ -3831,7 +3831,7 @@ namespace casadi {
     s.unpack("ProtoFunction::print_time", print_time_);
     s.unpack("ProtoFunction::record_time", record_time_);
     if (version >= 2) s.unpack("ProtoFunction::regularity_check", regularity_check_);
-    if (version >= 2) s.unpack("ProtoFunction::error_on_fail", error_on_fail_);
+    //if (version >= 2) s.unpack("ProtoFunction::error_on_fail", error_on_fail_);
   }
 
   void FunctionInternal::serialize_type(SerializingStream &s) const {
