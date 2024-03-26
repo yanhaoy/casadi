@@ -110,6 +110,11 @@ template<> inline std::string matrixName<SXElem>() { return "SX"; }
                              std::vector<SX>& ex, bool reverse);
 
   template<>
+  void SX::separate_linear(const SX &expr,
+    const SX &sym_lin, const SX &sym_const,
+    SX& expr_const, SX& expr_lin, SX& expr_nonlin);
+
+  template<>
   std::vector<SX> SX::cse(const std::vector<SX>& e);
 
   template<>

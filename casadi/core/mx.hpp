@@ -623,6 +623,9 @@ namespace casadi {
     static MX cumsum(const MX &x, casadi_int axis=-1);
     static MX _logsumexp(const MX& x);
     static std::vector<MX> cse(const std::vector<MX>& e);
+    static void separate_linear(const MX &expr,
+      const MX &sym_lin, const MX &sym_const,
+      MX& expr_const, MX& expr_lin, MX& expr_nonlin);
     ///@}
 
     ///@{
