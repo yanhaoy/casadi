@@ -238,6 +238,10 @@ namespace casadi {
         MatType& A, MatType& b, MatType& c, bool check);
     static void linear_coeff(const MatType &expr, const MatType &var,
         MatType& A, MatType& b, bool check);
+    static void separate_linear(const MatType &expr,
+        const MatType &sym_lin, const MatType &sym_const,
+        MatType& SWIG_OUTPUT(expr_const),
+        MatType& SWIG_OUTPUT(expr_lin), MatType& SWIG_OUTPUT(expr_nonlin));
     /** @}  */
     /// \endcond
 
@@ -933,6 +937,16 @@ namespace casadi {
     inline friend void linear_coeff(const MatType &expr, const MatType &var,
         MatType& A, MatType& b, bool check=true) {
       MatType::linear_coeff(expr, var, A, b, check);
+    }
+
+    /* \brief separate an expression into subuexpression that are linear, constant, and nonlinear
+    *
+    * expr = expr_const + expr_lin + expr_nonlin
+    */
+    inline friend void separate_linear(const MatType &expr,
+      const MatType &sym_lin, const MatType &sym_const,
+      MatType& expr_const, MatType& expr_lin, MatType& expr_nonlin) {
+        MatType::separate_linear(expr, sym_lin, sym_const, expr_const, expr_lin, expr_nonlin);
     }
 
     /** Count number of nodes */
