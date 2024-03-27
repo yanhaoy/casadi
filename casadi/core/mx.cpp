@@ -1518,10 +1518,13 @@ namespace casadi {
 
           // Perform the operation
           ores.resize(it->res.size());
+          it->data->eval_mx(oarg, ores);
           if (it->res.size()==1 && it->res[0]>=0 && !node_tainted) {
-            ores.at(0) = it->data;
-          } else {
-            it->data->eval_mx(oarg, ores);
+            if (ores[0].is_output()) {
+              ores = MX::createMultipleOutput(it->data.get());
+            } else {
+              ores.at(0) = it->data;
+            }
           }
 
           // Get the result
