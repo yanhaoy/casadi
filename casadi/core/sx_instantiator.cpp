@@ -567,7 +567,7 @@ namespace casadi {
 
     // Each work vector element has (const, lin, nonlin) part
     std::vector< std::array<SXElem, 3> > w(ff->worksize_,
-      std::array<SXElem, 3>{0, 0, 0});
+      std::array<SXElem, 3>{{0, 0, 0}});
 
     std::vector<const SXElem*> arg(f.sz_arg());
     arg[0] = get_ptr(sym_const.nonzeros());
