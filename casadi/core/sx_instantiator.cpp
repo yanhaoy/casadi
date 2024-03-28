@@ -26,6 +26,7 @@
 #include "matrix_impl.hpp"
 
 #include "sx_function.hpp"
+#include <array>
 
 namespace casadi {
 
