@@ -36,6 +36,7 @@
 #include "serializing_stream.hpp"
 #include "im.hpp"
 #include "bspline.hpp"
+#include <array>
 
 // Throw informative error message
 #define CASADI_THROW_ERROR(FNAME, WHAT) \
