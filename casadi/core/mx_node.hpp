@@ -34,6 +34,7 @@
 #include "linsol.hpp"
 #include <vector>
 #include <stack>
+#include <array>
 
 namespace casadi {
 
