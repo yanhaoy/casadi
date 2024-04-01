@@ -3301,6 +3301,40 @@ class MXtests(casadiTestCase):
 
             assert is_linear(expr_lin,veccat(x,y))
             assert not depends_on(expr_const,veccat(x,y))
+            
+  def test_extract_parametric(self):
+    def test_equal(a,b):
+        f1 = Function('f',[x,y,p],[a])
+        f2 = Function('f',[x,y,p],[b])
+        DM.rng(1)
+        args = [DM.rand(f1.sparsity_in(i)) for i in range(f1.n_in())]
+        return np.linalg.norm(f1(*args)-f2(*args),1)<1e-12
+        
+        #return cse(a-b).is_zero()  
+        
+    for X in [SX,MX]:
+
+
+      x = X.sym("x")
+      y = X.sym("y")
+      p = X.sym("p")
+
+      def tests():
+        cp = cos(p)
+        expr = (x-sqrt(p))*(y+cp**2)+cp/(x+cp)/(y-p)
+        
+        yield expr
+        
+      for expr in tests():
+
+        expr_ret,symbols,parametric = extract_parametric(expr,p)
+        
+        print(expr_ret,symbols,parametric)
+        
+        self.assertFalse(depends_on(expr_ret,p))
+        
+        expr_recreated = substitute(expr_ret,symbols,parametric)
+        self.assertTrue(test_equal(expr,expr_recreated))
 
 if __name__ == '__main__':
     unittest.main()
