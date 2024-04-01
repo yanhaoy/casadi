@@ -115,6 +115,10 @@ template<> inline std::string matrixName<SXElem>() { return "SX"; }
     SX& expr_const, SX& expr_lin, SX& expr_nonlin);
 
   template<>
+  void SX::extract_parametric(const SX &expr, const SX& par,
+      SX& expr_ret, SX& symbols, SX& parametric);
+
+  template<>
   std::vector<SX> SX::cse(const std::vector<SX>& e);
 
   template<>

@@ -242,6 +242,10 @@ namespace casadi {
         const MatType &sym_lin, const MatType &sym_const,
         MatType& SWIG_OUTPUT(expr_const),
         MatType& SWIG_OUTPUT(expr_lin), MatType& SWIG_OUTPUT(expr_nonlin));
+    static void extract_parametric(const MatType& expr, const MatType& par,
+        MatType& SWIG_OUTPUT(expr_ret),
+        MatType& SWIG_OUTPUT(symbols),
+        MatType& SWIG_OUTPUT(parametric));
     /** @}  */
     /// \endcond
 
@@ -970,6 +974,34 @@ namespace casadi {
       const MatType &sym_lin, const MatType &sym_const,
       MatType& expr_const, MatType& expr_lin, MatType& expr_nonlin) {
         MatType::separate_linear(expr, sym_lin, sym_const, expr_const, expr_lin, expr_nonlin);
+    }
+
+    /** \brief Extract purely parametric parts from an expression graph
+     * 
+     * The purpose of extract_parametric is ultimately to save on evaluation time of an expression,
+     * by extracting out the parts that are only solely dependant on parameters.
+     * 
+     * For any:
+     * [expr_ret, symbols, parametric] = extract_parametric(expr, par)
+     * It holds that:
+     * substitute(expr_ret,symbols,parametric) == expr
+     * 
+     * parametric is only dependant on par
+     * expr_ret is not dependant on par, but is dependant on symbols
+     * 
+     * Example:
+     * [expr_ret, symbols, parametric] = extract_parametric((x-sqrt(p))*y+cos(p)**2, p)
+     * 
+     * expr_ret: (((x-extracted1)*y)+extracted2)
+     * symbols: [extracted1, extracted2]
+     * parametric: [sqrt(p),cos(p)**2]
+     * 
+     */
+    inline friend void extract_parametric(const MatType &expr, const MatType& par,
+        MatType& SWIG_OUTPUT(expr_ret),
+        MatType& SWIG_OUTPUT(symbols),
+        MatType& SWIG_OUTPUT(parametric)) {
+      MatType::extract_parametric(expr, par, expr_ret, symbols, parametric);
     }
 
     /** Count number of nodes */

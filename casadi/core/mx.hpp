@@ -626,6 +626,8 @@ namespace casadi {
     static void separate_linear(const MX &expr,
       const MX &sym_lin, const MX &sym_const,
       MX& expr_const, MX& expr_lin, MX& expr_nonlin);
+    static void extract_parametric(const MX &expr, const MX& par,
+        MX& expr_ret, MX& symbols, MX& parametric);
     ///@}
 
     ///@{

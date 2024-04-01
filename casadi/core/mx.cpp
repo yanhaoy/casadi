@@ -2102,7 +2102,7 @@ namespace casadi {
     std::vector<MX> out = {expr};
 
     Function f("f", in, out, {{"live_variables", false},
-      {"max_io", 0}});
+      {"max_io", 0}, {"allow_free", true}});
     MXFunction *ff = f.get<MXFunction>();
 
     // Each work vector element has (const, lin, nonlin) part
@@ -2183,6 +2183,119 @@ namespace casadi {
     expr_const = res[0];
     expr_lin = res[1];
     expr_nonlin = res[2];
+  }
+
+  void MX::extract_parametric(const MX &expr, const MX& par,
+        MX& expr_ret, MX& symbols, MX& parametric) {
+
+    Function f("f", {par}, {expr}, {{"live_variables", false},
+      {"max_io", 0}, {"allow_free", true}});
+    MXFunction *ff = f.get<MXFunction>();
+
+    // Work vector
+    std::vector< MX > w(ff->workloc_.size()-1);
+    // Is the expression depedant on non-parameters?
+    std::vector< bool > tainted(ff->workloc_.size()-1, false);
+
+    // Split up inputs analogous to symbolic primitives
+    std::vector<MX> arg_split = par.split_primitives(par);
+
+    // Allocate storage for split outputs
+    std::vector<MX> res_split;
+    res_split.resize(expr.n_primitives());
+
+    // Scratch space for node inputs/outputs
+    std::vector<MX > arg1, res1;
+
+    // Map of registered symbols
+    std::map<MXNode*, MX> symbol_map;
+
+    // Flat list of registerd symbols and parametric expressions
+    std::vector<MX> symbol_v, parametric_v;
+
+    // Loop over computational nodes in forward order
+    casadi_int alg_counter = 0;
+    for (auto it=ff->algorithm_.begin(); it!=ff->algorithm_.end(); ++it, ++alg_counter) {
+      if (it->op == OP_INPUT) {
+        w[it->res.front()] = arg_split.at(it->data->segment());
+      } else if (it->op==OP_OUTPUT) {
+        // Collect the results
+        res_split.at(it->data->segment()) = w[it->arg.front()];
+      } else if (it->op==OP_CONST) {
+        // Fetch constant
+        w[it->res.front()] = it->data;
+      } else if (it->op==OP_PARAMETER) {
+        // Free variables
+        w[it->res.front()] = it->data;
+        tainted[it->res.front()] = true;
+      } else {
+        // Arguments of the operation
+        arg1.resize(it->arg.size());
+        for (casadi_int i=0; i<arg1.size(); ++i) {
+          casadi_int el = it->arg[i]; // index of the argument
+          arg1[i] = el<0 ? MX(it->data->dep(i).size()) : w[el];
+        }
+
+        // Check tainted status of inputs
+        bool any_tainted = false;
+        for (casadi_int i=0; i<arg1.size(); ++i) {
+          casadi_int el = it->arg[i]; // index of the argument
+          if (el>=0) {
+            any_tainted = any_tainted || tainted[it->arg[i]];
+          }
+        }
+
+        if (any_tainted) {
+          // Loop over all inputs
+          for (casadi_int i=0; i<arg1.size(); ++i) {
+            casadi_int el = it->arg[i]; // index of the argument
+
+            // For each untainted input being mixed into a tainted expression
+            if (el>=0 && !tainted[it->arg[i]]) {
+
+              // Check if a symbol is already registered
+              auto it = symbol_map.find(w[el].get());
+              if (it==symbol_map.end()) {
+                // Create a symbol and register
+                MX sym = MX::sym("extracted" + str(symbol_map.size()+1), w[el].sparsity());
+                symbol_map[w[el].get()] = sym;
+
+                // Make the (symbol,parametric expression) pair available
+                symbol_v.push_back(sym);
+                parametric_v.push_back(w[el]);
+
+                // Overwrite the argument
+                arg1[i] = sym;
+              } else {
+                // Just use the registered symbol
+                arg1[i] = it->second;
+              }
+            }
+          }
+        }
+
+        // Perform the operation
+        res1.resize(it->res.size());
+        it->data->eval_mx(arg1, res1);
+
+        // Get the result
+        for (casadi_int i=0; i<res1.size(); ++i) {
+          casadi_int el = it->res[i]; // index of the output
+          if (el>=0) {
+            w[el] = res1[i];
+            // Update tainted status
+            tainted[el] = any_tainted;
+          }
+        }
+      }
+    }
+
+    // Join split outputs
+    expr_ret = expr.join_primitives(res_split);
+
+    symbols = veccat(symbol_v);
+    parametric = veccat(parametric_v);
+
   }
 
   MX MX::stop_diff(const MX& expr, casadi_int order) {

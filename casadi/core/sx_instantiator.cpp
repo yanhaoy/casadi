@@ -553,9 +553,8 @@ namespace casadi {
 
     Function f("f", std::vector<SX>{sym_const, sym_lin},
       std::vector<SX>{expr}, {{"live_variables", false},
-      {"max_io", 0}});
+      {"max_io", 0}, {"allow_free", true}});
     SXFunction *ff = f.get<SXFunction>();
-    //f.disp(uout(), true);
 
     expr_const = SX::zeros(expr.sparsity());
     expr_lin = SX::zeros(expr.sparsity());
@@ -602,6 +601,122 @@ namespace casadi {
           casadi_math<SXElem>::fun_linear(a.op, w[a.i1].data(), w[a.i2].data(), w[a.i0].data());
       }
     }
+  }
+
+  template<>
+  void CASADI_EXPORT SX::extract_parametric(const SX &expr, const SX& par,
+      SX& expr_ret, SX& symbols, SX& parametric) {
+
+    Function f("f", std::vector<SX>{par},
+      std::vector<SX>{expr}, {{"live_variables", false},
+      {"max_io", 0}, {"allow_free", true}});
+    SXFunction *ff = f.get<SXFunction>();
+
+    // Each work vector element has (const, lin, nonlin) part
+    std::vector< SXElem > w(ff->worksize_);
+    // Is the expression depedant on non-parameters?
+    std::vector< bool > tainted(ff->worksize_, false);
+
+    // Iterator to the binary operations
+    std::vector<SXElem>::const_iterator b_it=ff->operations_.begin();
+
+    // Iterator to stack of constants
+    std::vector<SXElem>::const_iterator c_it = ff->constants_.begin();
+
+    // Iterator to free variables
+    std::vector<SXElem>::const_iterator p_it = ff->free_vars_.begin();
+
+    // Get argument nonzeros
+    const SXElem* arg = get_ptr(par.nonzeros());
+
+    // Allocate space to write results to
+    expr_ret = SX::zeros(expr.sparsity());
+    std::vector<SXElem>& ret = expr_ret.nonzeros();
+
+    // Map of registered symbols
+    std::map<SXNode*, SXElem> symbol_map;
+
+    // Flat list of registerd symbols and parametric expressions
+    std::vector<SXElem> symbol_v, parametric_v;
+
+    // Evaluate algorithm
+    for (auto&& a : ff->algorithm_) {
+      switch (a.op) {
+        case OP_INPUT:
+          w[a.i0] = arg[a.i2];
+          break;
+        case OP_OUTPUT:
+          casadi_assert_dev(a.i0==0);
+          ret[a.i2] = w[a.i1];
+          break;
+        case OP_CONST:
+          w[a.i0] = *c_it++;
+          break;
+        case OP_PARAMETER:
+          w[a.i0] = *p_it++;
+          tainted[a.i0] = true;
+          break;
+        default:
+          {
+            bool is_binary = casadi_math<SXElem>::is_binary(a.op);
+
+            SXElem w1 = w[a.i1];
+            SXElem w2 = is_binary ? w[a.i2] : 0;
+            // Check tainted status of inputs
+            bool any_tainted = tainted[a.i1];
+            if (casadi_math<SXElem>::is_binary(a.op)) {
+              any_tainted = any_tainted || tainted[a.i2];
+            }
+
+            if (any_tainted) {
+              // Loop over inputs
+              for (int k=0;k<1+is_binary;++k) {
+                // Skip if already tainted
+                casadi_int el = k==0 ? a.i1 : a.i2;
+                if (tainted[el]) continue;
+
+                SXElem& arg = k==0 ? w1 : w2;
+                // Check if a symbol is already registered
+                auto it = symbol_map.find(arg.get());
+                if (it==symbol_map.end()) {
+                  // Create a symbol and register
+                  SXElem sym = SXElem::sym("extracted" + str(symbol_map.size()+1));
+                  symbol_map[arg.get()] = sym;
+
+                  // Make the (symbol,parametric expression) pair available
+                  symbol_v.push_back(sym);
+                  parametric_v.push_back(arg);
+
+                  // Overwrite the argument
+                  arg = sym;
+                } else {
+                  // Just use the registered symbol
+                  arg = it->second;
+                }
+              }
+            }
+
+            // Evaluate the function to a temporary value
+            // (as it might overwrite the children in the work vector)
+            SXElem f;
+            switch (a.op) {
+              CASADI_MATH_FUN_BUILTIN(w1, w2, f)
+            }
+
+            w[a.i0] = f;
+
+            // Avoid creating duplicates
+            const casadi_int depth = 2; // NOTE: a higher depth could possibly give more savings
+            w[a.i0].assignIfDuplicate(*b_it++, depth);
+
+            // Update tainted status
+            tainted[a.i0] = any_tainted;
+          }
+      }
+    }
+
+    symbols = SX(symbol_v);
+    parametric = SX(parametric_v);
   }
 
 
