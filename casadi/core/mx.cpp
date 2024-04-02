@@ -2217,6 +2217,29 @@ namespace casadi {
     expr_nonlin = res[2];
   }
 
+
+  MX register_symbol(const MX& node, std::map<MXNode*, MX>& symbol_map,
+                  std::vector<MX>& symbol_v, std::vector<MX>& parametric_v) {
+    // Check if a symbol is already registered
+    auto it = symbol_map.find(node.get());
+    if (it==symbol_map.end()) {
+      // Create a symbol and register
+      MX sym = MX::sym("extracted" + str(symbol_map.size()+1), node.sparsity());
+      symbol_map[node.get()] = sym;
+
+      // Make the (symbol,parametric expression) pair available
+      symbol_v.push_back(sym);
+      parametric_v.push_back(node);
+
+      // Use the new symbol
+      return sym;
+    } else {
+      // Just use the registered symbol
+      return it->second;
+    }
+  }
+
+
   void MX::extract_parametric(const MX &expr, const MX& par,
         MX& expr_ret, MX& symbols, MX& parametric) {
 
@@ -2251,8 +2274,12 @@ namespace casadi {
       if (it->op == OP_INPUT) {
         w[it->res.front()] = arg_split.at(it->data->segment());
       } else if (it->op==OP_OUTPUT) {
+        MX arg = w[it->arg.front()];
+        if (!tainted[it->arg.front()]) {
+          arg = register_symbol(arg, symbol_map, symbol_v, parametric_v);
+        }
         // Collect the results
-        res_split.at(it->data->segment()) = w[it->arg.front()];
+        res_split.at(it->data->segment()) = arg;
       } else if (it->op==OP_CONST) {
         // Fetch constant
         w[it->res.front()] = it->data;
@@ -2285,23 +2312,7 @@ namespace casadi {
             // For each untainted input being mixed into a tainted expression
             if (el>=0 && !tainted[it->arg[i]]) {
 
-              // Check if a symbol is already registered
-              auto it = symbol_map.find(w[el].get());
-              if (it==symbol_map.end()) {
-                // Create a symbol and register
-                MX sym = MX::sym("extracted" + str(symbol_map.size()+1), w[el].sparsity());
-                symbol_map[w[el].get()] = sym;
-
-                // Make the (symbol,parametric expression) pair available
-                symbol_v.push_back(sym);
-                parametric_v.push_back(w[el]);
-
-                // Overwrite the argument
-                arg1[i] = sym;
-              } else {
-                // Just use the registered symbol
-                arg1[i] = it->second;
-              }
+              arg1[i] = register_symbol(w[el], symbol_map, symbol_v, parametric_v);
             }
           }
         }
