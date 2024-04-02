@@ -603,6 +603,28 @@ namespace casadi {
     }
   }
 
+SXElem register_symbol(const SXElem& node, std::map<SXNode*, SXElem>& symbol_map,
+                  std::vector<SXElem>& symbol_v, std::vector<SXElem>& parametric_v) {
+
+    // Check if a symbol is already registered
+  auto it = symbol_map.find(node.get());
+  if (it==symbol_map.end()) {
+    // Create a symbol and register
+    SXElem sym = SXElem::sym("extracted" + str(symbol_map.size()+1));
+    symbol_map[node.get()] = sym;
+
+    // Make the (symbol,parametric expression) pair available
+    symbol_v.push_back(sym);
+    parametric_v.push_back(node);
+
+    // Overwrite the argument
+    return sym;
+  } else {
+    // Just use the registered symbol
+    return it->second;
+  }
+}
+
   template<>
   void CASADI_EXPORT SX::extract_parametric(const SX &expr, const SX& par,
       SX& expr_ret, SX& symbols, SX& parametric) {
@@ -647,7 +669,13 @@ namespace casadi {
           break;
         case OP_OUTPUT:
           casadi_assert_dev(a.i0==0);
-          ret[a.i2] = w[a.i1];
+          {
+            SXElem arg = w[a.i1];
+            if (!tainted[a.i1]) {
+              arg = register_symbol(arg, symbol_map, symbol_v, parametric_v);
+            }
+            ret[a.i2] = arg;
+          }
           break;
         case OP_CONST:
           w[a.i0] = *c_it++;
@@ -676,23 +704,8 @@ namespace casadi {
                 if (tainted[el]) continue;
 
                 SXElem& arg = k==0 ? w1 : w2;
-                // Check if a symbol is already registered
-                auto it = symbol_map.find(arg.get());
-                if (it==symbol_map.end()) {
-                  // Create a symbol and register
-                  SXElem sym = SXElem::sym("extracted" + str(symbol_map.size()+1));
-                  symbol_map[arg.get()] = sym;
 
-                  // Make the (symbol,parametric expression) pair available
-                  symbol_v.push_back(sym);
-                  parametric_v.push_back(arg);
-
-                  // Overwrite the argument
-                  arg = sym;
-                } else {
-                  // Just use the registered symbol
-                  arg = it->second;
-                }
+                arg = register_symbol(arg, symbol_map, symbol_v, parametric_v);
               }
             }
 

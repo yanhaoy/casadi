@@ -3284,6 +3284,8 @@ class MXtests(casadiTestCase):
         
         yield expr
         
+        yield vertcat(expr,p**2)
+        
       for expr in tests():
 
         expr_ret,symbols,parametric = extract_parametric(expr,p)
