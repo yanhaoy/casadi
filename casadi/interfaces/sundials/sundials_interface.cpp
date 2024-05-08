@@ -343,6 +343,9 @@ void SundialsInterface::reset(IntegratorMemory* mem, const double* x,
     const double* z, const double* p) const {
   auto m = static_cast<SundialsMemory*>(mem);
 
+  // Reset the base classes
+  Integrator::reset(mem, x, z, p);
+
   // Reset stats
   reset_stats(m);
 
