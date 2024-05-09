@@ -365,9 +365,14 @@ int Integrator::eval(const double** arg, double** res,
   // Setup memory object
   setup(m, arg, res, iw, w);
 
+  // Pass initial state, parameters
+  set_x(m, x0);
+  set_z(m, z0);
+  set_p(m, p);
+
   // Reset solver, take time to t0
   m->t = t0_;
-  reset(m, x0, z0, p);
+  reset(m);
 
   // Next stop time due to step change in input
   casadi_int k_stop = next_stop(0, u);
@@ -2028,12 +2033,11 @@ void FixedStepIntegrator::stepB(FixedStepMemory* m, double t, double h,
   }
 }
 
-void FixedStepIntegrator::reset(IntegratorMemory* mem, const double* x, const double* z,
-    const double* p) const {
+void FixedStepIntegrator::reset(IntegratorMemory* mem) const {
   auto m = static_cast<FixedStepMemory*>(mem);
 
   // Reset the base classes
-  Integrator::reset(mem, x, z, p);
+  Integrator::reset(mem);
 
   // Reset summation states
   casadi_clear(m->q, nq_);
@@ -2043,7 +2047,7 @@ void FixedStepIntegrator::reset(IntegratorMemory* mem, const double* x, const do
 
   // Add the first element in the tape
   if (nrx_ > 0) {
-    casadi_copy(x, nx_, m->x_tape);
+    casadi_copy(m->x, nx_, m->x_tape);
   }
 }
 
@@ -2318,14 +2322,23 @@ ImplicitFixedStepIntegrator::ImplicitFixedStepIntegrator(DeserializingStream & s
   s.version("ImplicitFixedStepIntegrator", 2);
 }
 
-void Integrator::reset(IntegratorMemory* m, const double* x, const double* z,
-    const double* p) const {
-  // Update the state
+void Integrator::set_x(IntegratorMemory* m, const double* x) const {
   casadi_copy(x, nx_, m->x);
-  casadi_copy(z, nz_, m->z);
+}
 
-  // Set parameters
+void Integrator::set_z(IntegratorMemory* m, const double* z) const {
+  casadi_copy(z, nz_, m->z);
+}
+
+void Integrator::set_p(IntegratorMemory* m, const double* p) const {
   casadi_copy(p, np_, m->p);
+}
+
+void Integrator::set_u(IntegratorMemory* m, const double* u) const {
+  casadi_copy(u, nu_, m->u);
+}
+
+void Integrator::reset(IntegratorMemory* m) const {
 }
 
 casadi_int Integrator::next_stop(casadi_int k, const double* u) const {
