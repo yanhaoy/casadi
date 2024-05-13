@@ -730,6 +730,8 @@ namespace casadi {
 
         \identifier{1cq} */
     friend inline MatType solve(const MatType& A, const MatType& b) {
+      // If A is scalar, just divide
+      if (A.is_scalar()) return b/A;
       return MatType::solve(A, b);
     }
 
@@ -739,6 +741,8 @@ namespace casadi {
     friend inline MatType solve(const MatType& A, const MatType& b,
                                 const std::string& lsolver,
                                 const Dict& dict = Dict()) {
+      // If A is scalar, just divide
+      if (A.is_scalar()) return b/A;
       return MatType::solve(A, b, lsolver, dict);
     }
 
