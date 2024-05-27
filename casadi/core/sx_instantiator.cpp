@@ -636,8 +636,12 @@ SXElem register_symbol(const SXElem& node, std::map<SXNode*, SXElem>& symbol_map
 
     // Each work vector element has (const, lin, nonlin) part
     std::vector< SXElem > w(ff->worksize_);
-    // Is the expression depedant on non-parameters?
-    std::vector< bool > tainted(ff->worksize_, false);
+
+    // Status of the expression:
+    // 0: dependant on constants only
+    // 1: dependant on parameters/constants only
+    // 2: dependant on non-parameters
+    std::vector< char > expr_status(ff->worksize_, 0);
 
     // Iterator to the binary operations
     std::vector<SXElem>::const_iterator b_it=ff->operations_.begin();
@@ -666,12 +670,13 @@ SXElem register_symbol(const SXElem& node, std::map<SXNode*, SXElem>& symbol_map
       switch (a.op) {
         case OP_INPUT:
           w[a.i0] = arg[a.i2];
+          expr_status[a.i0] = 1;
           break;
         case OP_OUTPUT:
           casadi_assert_dev(a.i0==0);
           {
             SXElem arg = w[a.i1];
-            if (!tainted[a.i1]) {
+            if (expr_status[a.i1]==1) {
               arg = register_symbol(arg, symbol_map, symbol_v, parametric_v);
             }
             ret[a.i2] = arg;
@@ -679,10 +684,11 @@ SXElem register_symbol(const SXElem& node, std::map<SXNode*, SXElem>& symbol_map
           break;
         case OP_CONST:
           w[a.i0] = *c_it++;
+          expr_status[a.i0] = 0;
           break;
         case OP_PARAMETER:
           w[a.i0] = *p_it++;
-          tainted[a.i0] = true;
+          expr_status[a.i0] = 2;
           break;
         default:
           {
@@ -690,18 +696,21 @@ SXElem register_symbol(const SXElem& node, std::map<SXNode*, SXElem>& symbol_map
 
             SXElem w1 = w[a.i1];
             SXElem w2 = is_binary ? w[a.i2] : 0;
-            // Check tainted status of inputs
-            bool any_tainted = tainted[a.i1];
+            // Check worst case status of inputs
+            char max_status = expr_status[a.i1];
             if (casadi_math<SXElem>::is_binary(a.op)) {
-              any_tainted = any_tainted || tainted[a.i2];
+              max_status = std::max(max_status, expr_status[a.i2]);
             }
+            bool any_tainted = max_status==2;
 
             if (any_tainted) {
               // Loop over inputs
               for (int k=0;k<1+is_binary;++k) {
                 // Skip if already tainted
                 casadi_int el = k==0 ? a.i1 : a.i2;
-                if (tainted[el]) continue;
+                if (expr_status[el]==2) continue;
+                // Skip if it is a constant
+                if (expr_status[el]==0) continue;
 
                 SXElem& arg = k==0 ? w1 : w2;
 
@@ -722,8 +731,8 @@ SXElem register_symbol(const SXElem& node, std::map<SXNode*, SXElem>& symbol_map
             const casadi_int depth = 2; // NOTE: a higher depth could possibly give more savings
             w[a.i0].assignIfDuplicate(*b_it++, depth);
 
-            // Update tainted status
-            tainted[a.i0] = any_tainted;
+            // Update expression status
+            expr_status[a.i0] = max_status;
           }
       }
     }

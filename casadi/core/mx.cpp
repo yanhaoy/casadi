@@ -2217,8 +2217,12 @@ namespace casadi {
 
     // Work vector
     std::vector< MX > w(ff->workloc_.size()-1);
-    // Is the expression depedant on non-parameters?
-    std::vector< bool > tainted(ff->workloc_.size()-1, false);
+
+    // Status of the expression:
+    // 0: dependant on constants only
+    // 1: dependant on parameters/constants only
+    // 2: dependant on non-parameters
+    std::vector< char > expr_status(ff->workloc_.size()-1, 0);
 
     // Split up inputs analogous to symbolic primitives
     std::vector<MX> arg_split = par.split_primitives(par);
@@ -2241,9 +2245,10 @@ namespace casadi {
     for (auto it=ff->algorithm_.begin(); it!=ff->algorithm_.end(); ++it, ++alg_counter) {
       if (it->op == OP_INPUT) {
         w[it->res.front()] = arg_split.at(it->data->segment());
+        expr_status[it->res.front()] = 1;
       } else if (it->op==OP_OUTPUT) {
         MX arg = w[it->arg.front()];
-        if (!tainted[it->arg.front()]) {
+        if (expr_status[it->arg.front()]==1) {
           arg = register_symbol(arg, symbol_map, symbol_v, parametric_v);
         }
         // Collect the results
@@ -2251,10 +2256,11 @@ namespace casadi {
       } else if (it->op==OP_CONST) {
         // Fetch constant
         w[it->res.front()] = it->data;
+        expr_status[it->res.front()] = 0;
       } else if (it->op==OP_PARAMETER) {
         // Free variables
         w[it->res.front()] = it->data;
-        tainted[it->res.front()] = true;
+        expr_status[it->res.front()] = 2;
       } else {
         // Arguments of the operation
         arg1.resize(it->arg.size());
@@ -2263,22 +2269,23 @@ namespace casadi {
           arg1[i] = el<0 ? MX(it->data->dep(i).size()) : w[el];
         }
 
-        // Check tainted status of inputs
-        bool any_tainted = false;
+        // Check worst case status of inputs
+        char max_status = 0;
         for (casadi_int i=0; i<arg1.size(); ++i) {
           casadi_int el = it->arg[i]; // index of the argument
           if (el>=0) {
-            any_tainted = any_tainted || tainted[it->arg[i]];
+            max_status = std::max(max_status, expr_status[it->arg[i]]);
           }
         }
+        bool any_tainted = max_status==2;
 
         if (any_tainted) {
           // Loop over all inputs
           for (casadi_int i=0; i<arg1.size(); ++i) {
             casadi_int el = it->arg[i]; // index of the argument
 
-            // For each untainted input being mixed into a tainted expression
-            if (el>=0 && !tainted[it->arg[i]]) {
+            // For each parametric input being mixed into a non-parametric expression
+            if (el>=0 && expr_status[el]==1) {
 
               arg1[i] = register_symbol(w[el], symbol_map, symbol_v, parametric_v);
             }
@@ -2294,8 +2301,8 @@ namespace casadi {
           casadi_int el = it->res[i]; // index of the output
           if (el>=0) {
             w[el] = res1[i];
-            // Update tainted status
-            tainted[el] = any_tainted;
+            // Update expression status
+            expr_status[el] = max_status;
           }
         }
       }
