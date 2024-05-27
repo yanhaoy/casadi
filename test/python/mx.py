@@ -3311,6 +3311,29 @@ class MXtests(casadiTestCase):
         return np.linalg.norm(f1(*args)-f2(*args),1)<1e-12
         
         #return cse(a-b).is_zero()  
+    
+    for X in [SX,MX]:
+
+
+      x = X.sym("x")
+      y = X.sym("y")
+      p = X.sym("p")
+      
+      expr = 2*x*p+2*y*p**2
+      expr_ret,symbols,parametric = extract_parametric(expr,p)
+      print(expr_ret,parametric)
+      self.assertTrue(test_equal(parametric,vertcat(p,p**2)))
+      
+      expr = vertcat(2*x+3*y+8*p,3*x+2*y+4,7)
+      
+      expr_ret,symbols,parametric = extract_parametric(expr,p)
+      
+      print(expr_ret,parametric)
+      
+      self.assertTrue(test_equal(parametric,8*p))
+      
+      
+
         
     for X in [SX,MX]:
 
