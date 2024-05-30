@@ -134,4 +134,23 @@ namespace casadi {
     dep()->reset_input();
   }
 
+  casadi_int SparsityCast::n_primitives() const {
+    return dep()->n_primitives();
+  }
+
+  void SparsityCast::primitives(std::vector<MX>::iterator& it) const {
+    dep()->primitives(it);
+  }
+
+  void SparsityCast::split_primitives(const MX& x, std::vector<MX>::iterator& it) const {
+    MX xpr = project(x, sparsity(), false);
+    dep()->split_primitives(sparsity_cast(xpr, dep().sparsity()), it);
+  }
+
+  MX SparsityCast::join_primitives(std::vector<MX>::const_iterator& it) const {
+    MX xpr = dep()->join_primitives(it);
+    xpr = project(xpr, dep().sparsity());
+    return sparsity_cast(xpr, sparsity());
+  }
+
 } // namespace casadi

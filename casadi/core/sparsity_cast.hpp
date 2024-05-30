@@ -125,6 +125,18 @@ namespace casadi {
         \identifier{24s} */
     bool is_valid_input() const override;
 
+    /** \brief Get the number of symbolic primitives */
+    casadi_int n_primitives() const override;
+
+    /** \brief Get symbolic primitives */
+    void primitives(std::vector<MX>::iterator& it) const override;
+
+    /** \brief Split up an expression along symbolic primitives */
+    void split_primitives(const MX& x, std::vector<MX>::iterator& it) const override;
+
+    /** \brief Join an expression along symbolic primitives */
+    MX join_primitives(std::vector<MX>::const_iterator& it) const override;
+
     /** \brief Detect duplicate symbolic expressions
 
         \identifier{24t} */
