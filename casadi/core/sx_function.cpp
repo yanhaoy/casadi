@@ -621,11 +621,9 @@ namespace casadi {
       for (casadi_int i=0; i<in_.size(); ++i) {
         MX nz;
         arg[i].get_nz(nz, 0, Slice());
-        std::vector<MX> s = vertsplit(nz);
+        std::vector<MX> s(nz.nnz());
+        for (casadi_int i=0; i<nz.nnz(); ++i) s[i] = nz(i);
 
-        for (const auto& e : s) {
-          casadi_assert(e.is_scalar(), "Input MX must be scalar");
-        }
         arg_split[i] = s;
         /*if (sparsity_in_[i].is_vector() && sparsity_in_[i].is_dense()) {
           if (arg[i].op()==OP_VERTCAT) {
