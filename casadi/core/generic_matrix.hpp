@@ -242,6 +242,7 @@ namespace casadi {
         const MatType &sym_lin, const MatType &sym_const,
         MatType& SWIG_OUTPUT(expr_const),
         MatType& SWIG_OUTPUT(expr_lin), MatType& SWIG_OUTPUT(expr_nonlin));
+    static MatType fold_constants(const MatType &expr);
     static void extract_parametric(const MatType& expr, const MatType& par,
         MatType& SWIG_OUTPUT(expr_ret),
         MatType& SWIG_OUTPUT(symbols),
@@ -980,6 +981,10 @@ namespace casadi {
         MatType::separate_linear(expr, sym_lin, sym_const, expr_const, expr_lin, expr_nonlin);
     }
 
+    inline friend MatType fold_constants(const MatType &expr) {
+      return MatType::fold_constants(expr);
+    }
+  
     /** \brief Extract purely parametric parts from an expression graph
      * 
      * The purpose of extract_parametric is ultimately to save on evaluation time of an expression,

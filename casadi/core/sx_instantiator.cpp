@@ -603,6 +603,11 @@ namespace casadi {
     }
   }
 
+  template<>
+  SX CASADI_EXPORT SX::fold_constants(const SX &expr) {
+    return 0;
+  }
+
 SXElem register_symbol(const SXElem& node, std::map<SXNode*, SXElem>& symbol_map,
                   std::vector<SXElem>& symbol_v, std::vector<SXElem>& parametric_v) {
 

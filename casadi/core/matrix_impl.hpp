@@ -2586,6 +2586,11 @@ namespace casadi {
   }
 
   template<typename Scalar>
+  Matrix<Scalar> Matrix<Scalar>::fold_constants(const Matrix<Scalar> &expr) {
+    casadi_error("'fold_constants' not defined for " + type_name());
+  }
+
+  template<typename Scalar>
   void Matrix<Scalar>::extract_parametric(const Matrix<Scalar> &expr, const Matrix<Scalar>& par,
         Matrix<Scalar>& expr_ret, Matrix<Scalar>& symbols, Matrix<Scalar>& parametric) {
     casadi_error("'extract_parametric' not defined for " + type_name());

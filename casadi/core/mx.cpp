@@ -2186,6 +2186,99 @@ namespace casadi {
   }
 
 
+  MX MX::fold_constants(const MX &expr) {
+    Function f("f", {}, {expr}, {{"live_variables", false},
+      {"max_io", 0}, {"allow_free", true}});
+    MXFunction *ff = f.get<MXFunction>();
+
+    // Work vector
+    std::vector< MX > w(ff->workloc_.size()-1);
+
+    std::vector< bool > is_constant(ff->workloc_.size()-1);
+
+    // Allocate storage for split outputs
+    std::vector<MX> res_split;
+    res_split.resize(expr.n_primitives());
+
+    // Scratch space for node inputs/outputs
+    std::vector<MX > arg1, res1;
+
+    // Map of registered symbols
+    std::map<MXNode*, MX> symbol_map;
+
+    // Flat list of registerd symbols and parametric expressions
+    std::vector<MX> symbol_v, parametric_v;
+
+    // Loop over computational nodes in forward order
+    casadi_int alg_counter = 0;
+    for (auto it=ff->algorithm_.begin(); it!=ff->algorithm_.end(); ++it, ++alg_counter) {
+      if (it->op == OP_INPUT) {
+        casadi_assert_dev("Cannot occur");
+      } else if (it->op==OP_OUTPUT) {
+        MX arg = w[it->arg.front()];
+        if (is_constant[it->arg.front()]) {
+          arg = evalf(arg);
+        }
+        // Collect the results
+        res_split.at(it->data->segment()) = arg;
+      } else if (it->op==OP_CONST) {
+        // Fetch constant
+        w[it->res.front()] = it->data;
+        is_constant[it->res.front()] = true;
+      } else if (it->op==OP_PARAMETER) {
+        // Free variables
+        w[it->res.front()] = it->data;
+        is_constant[it->res.front()] = false;
+      } else {
+        // Arguments of the operation
+        arg1.resize(it->arg.size());
+        for (casadi_int i=0; i<arg1.size(); ++i) {
+          casadi_int el = it->arg[i]; // index of the argument
+          arg1[i] = el<0 ? MX(it->data->dep(i).size()) : w[el];
+        }
+
+        // Check worst case status of inputs
+        bool all_constant = true;
+        for (casadi_int i=0; i<arg1.size(); ++i) {
+          casadi_int el = it->arg[i]; // index of the argument
+          if (el>=0) {
+            all_constant = all_constant && is_constant[it->arg[i]];
+          }
+        }
+
+        if (!all_constant) {
+          // Loop over all inputs
+          for (casadi_int i=0; i<arg1.size(); ++i) {
+            casadi_int el = it->arg[i]; // index of the argument
+
+            // For each parametric input being mixed into a non-parametric expression
+            if (el>=0 && is_constant[el]) {
+
+              arg1[i] = evalf(w[el]);
+            }
+          }
+        }
+
+        // Perform the operation
+        res1.resize(it->res.size());
+        it->data->eval_mx(arg1, res1);
+
+        // Get the result
+        for (casadi_int i=0; i<res1.size(); ++i) {
+          casadi_int el = it->res[i]; // index of the output
+          if (el>=0) {
+            w[el] = res1[i];
+            // Update expression status
+            is_constant[el] = all_constant;
+          }
+        }
+      }
+    }
+
+    // Join split outputs
+    return expr.join_primitives(res_split);
+  }
+
   MX register_symbol(const MX& node, std::map<MXNode*, MX>& symbol_map,
                   std::vector<MX>& symbol_v, std::vector<MX>& parametric_v) {
     // Check if a symbol is already registered
