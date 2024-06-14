@@ -420,6 +420,7 @@ namespace casadi {
     static void separate_linear(const Matrix<Scalar> &expr,
       const Matrix<Scalar> &sym_lin, const Matrix<Scalar> &sym_const,
       Matrix<Scalar>& expr_const, Matrix<Scalar>& expr_lin, Matrix<Scalar>& expr_nonlin);
+    static Matrix<Scalar> fold_constants(const Matrix<Scalar> &expr);
     static void extract_parametric(const Matrix<Scalar> &expr, const Matrix<Scalar>& par,
         Matrix<Scalar>& expr_ret, Matrix<Scalar>& symbols, Matrix<Scalar>& parametric);
     ///@}
