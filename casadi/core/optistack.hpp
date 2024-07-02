@@ -123,6 +123,7 @@ public:
 
       \identifier{19} */
   MX parameter(casadi_int n=1, casadi_int m=1, const std::string& attribute="full");
+  MX parameter(const Sparsity& sp, const std::string& attribute="full");
 
   /** \brief Set objective
   *
