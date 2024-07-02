@@ -354,6 +354,26 @@ void OptiNode::register_dual(MetaCon& c) {
   set_meta(symbol, meta_data);
 }
 
+MX OptiNode::parameter(const Sparsity& sp, const std::string& attribute) {
+  casadi_assert_dev(attribute=="full");
+
+  // Prepare metadata
+  MetaVar meta_data;
+  meta_data.attribute = attribute;
+  meta_data.n = -1;
+  meta_data.m = -1;
+  meta_data.type = OPTI_PAR;
+  meta_data.count = count_++;
+  meta_data.i = count_par_++;
+
+  MX symbol = MX::sym(name_prefix() + "p_" + str(count_par_), sp);
+  symbols_.push_back(symbol);
+  store_initial_[OPTI_PAR].push_back(DM::nan(symbol.sparsity()));
+
+  set_meta(symbol, meta_data);
+  return symbol;
+}
+
 MX OptiNode::parameter(casadi_int n, casadi_int m, const std::string& attribute) {
   casadi_assert_dev(attribute=="full");
 

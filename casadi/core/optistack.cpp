@@ -79,6 +79,14 @@ MX Opti::parameter(casadi_int n, casadi_int m, const std::string& attribute) {
   }
 }
 
+MX Opti::parameter(const Sparsity& sp, const std::string& attribute) {
+  try {
+    return (*this)->parameter(sp, attribute);
+  } catch(std::exception& e) {
+    THROW_ERROR("parameter", e.what());
+  }
+}
+
 void Opti::minimize(const MX& f) {
   try {
     (*this)->minimize(f);
