@@ -247,6 +247,10 @@ namespace casadi {
         MatType& SWIG_OUTPUT(expr_ret),
         MatType& SWIG_OUTPUT(symbols),
         MatType& SWIG_OUTPUT(parametric));
+    static void extract_parametric(const std::vector<MatType>& expr, const MatType& par,
+        std::vector<MatType>& SWIG_OUTPUT(expr_ret),
+        MatType& SWIG_OUTPUT(symbols),
+        MatType& SWIG_OUTPUT(parametric));
     /** @}  */
     /// \endcond
 
@@ -1013,6 +1017,32 @@ namespace casadi {
       MatType::extract_parametric(expr, par, expr_ret, symbols, parametric);
     }
 
+    inline friend void extract_parametric(const std::vector<MatType> &expr, const MatType& par,
+        std::vector<MatType>& SWIG_OUTPUT(expr_ret),
+        MatType& SWIG_OUTPUT(symbols),
+        MatType& SWIG_OUTPUT(parametric)) {
+      // Concatenate all vector elements
+      MatType expr_cat = veccat(expr);
+      MatType expr_ret_cat;
+
+      // Concatenated extract_parametric
+      MatType::extract_parametric(expr_cat, par, expr_ret_cat, symbols, parametric);
+
+      // Compute edges of vertsplit needed to undo concatenate
+      std::vector<casadi_int> edges = {0};
+      for (const MatType& e : expr) {
+        edges.push_back(edges.back() + e.numel());
+      }
+      // Perform vertsplit
+      std::vector<MatType> expr_ret_catv = vertsplit(expr_ret_cat, edges);
+
+      // Reshape all elements back into original size
+      expr_ret.resize(expr_ret_catv.size());
+      for (casadi_int i=0; i<expr_ret_catv.size(); ++i) {
+        expr_ret[i] = reshape(expr_ret_catv[i], expr[i].size1(), expr[i].size2());
+      }
+    }
+  
     /** Count number of nodes */
     inline friend casadi_int n_nodes(const MatType& A) {
       return MatType::n_nodes(A);
