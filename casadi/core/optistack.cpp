@@ -56,6 +56,22 @@ MX Opti::variable(casadi_int n, casadi_int m, const std::string& attribute) {
   }
 }
 
+MX Opti::variable(const Sparsity& sp, const std::string& attribute) {
+  try {
+    return (*this)->variable(sp, attribute);
+  } catch(std::exception& e) {
+    THROW_ERROR("variable", e.what());
+  }
+}
+
+MX Opti::variable(const MX& symbol, const std::string& attribute) {
+  try {
+    return (*this)->variable(symbol, attribute);
+  } catch(std::exception& e) {
+    THROW_ERROR("variable", e.what());
+  }
+}
+
 Opti::Opti(OptiNode* node) {
   own(node);
 }
@@ -82,6 +98,14 @@ MX Opti::parameter(casadi_int n, casadi_int m, const std::string& attribute) {
 MX Opti::parameter(const Sparsity& sp, const std::string& attribute) {
   try {
     return (*this)->parameter(sp, attribute);
+  } catch(std::exception& e) {
+    THROW_ERROR("parameter", e.what());
+  }
+}
+
+MX Opti::parameter(const MX& symbol, const std::string& attribute) {
+  try {
+    return (*this)->parameter(symbol, attribute);
   } catch(std::exception& e) {
     THROW_ERROR("parameter", e.what());
   }
