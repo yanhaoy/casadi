@@ -323,9 +323,26 @@ jobs:
           p12-password: ''
           keychain-password: ${{ secrets.KEYCHAIN_PASSWORD }}
         if: env.DEVELOPMENT_CERTIFICATE_DATA_AVAILABLE=='yes'
-      - run: python misc/codesign.py "${{ secrets.CODESIGN_IDENTITY }}" install
-        shell: bash -el {0}
-        if: env.DEVELOPMENT_CERTIFICATE_DATA_AVAILABLE=='yes'
+      - name: Run Workflow
+        id: write_file
+        uses: timheuer/base64-to-file@v1.2
+        with:
+          fileName: 'codesign.p12'
+          encodedString: ${{ secrets.DEVELOPMENT_CERTIFICATE_DATA }}
+      - name: Install App Store Connect API Key
+        run: |
+          mkdir -p private_keys/
+              echo '${{ secrets.app_store_connect_key }}' > private_keys/AuthKey_DEADBEEF.p12
+      - name: Sign and Notarize
+        uses: indygreg/apple-code-sign-action@v1
+        with:
+          input_path: install
+          notarize: true
+          staple: true
+          p12_file: codesign.p12
+          p12_password: ''
+          app_store_connect_api_issuer: ${{ secrets.app_store_connect_api_issuer }}'
+          app_store_connect_api_key: 'DEADBEEF'
       - run: |
              cd install
              echo "This file (and the casadi directory) should end up in a folder called 'casadi-${{env.os}}${{env.bitness}}-py${{matrix.py2}}'" > dummy.txt
