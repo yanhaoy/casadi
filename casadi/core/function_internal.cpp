@@ -2546,7 +2546,7 @@ namespace casadi {
         sz_w = std::max(sz_w, static_cast<size_t>(s.size2())); // To be able to copy a row
       }
       sz_w += i_nnz + o_nnz;
-      g << CodeGenerator::array("casadi_real", "w", sz_w);
+      g << "casadi_real *w = (casadi_real *)malloc(" << sz_w << "* sizeof(casadi_real));\n";
       g << CodeGenerator::array("casadi_int", "iw", sz_iw());
       std::string fw = "w+" + str(i_nnz + o_nnz);
 
@@ -2558,13 +2558,21 @@ namespace casadi {
       g << "casadi_real* res[" << sz_res() << "] = {0};\n";
 
       // Check arguments
-      g << "if (argc>" << n_in_ << ") mexErrMsgIdAndTxt(\"Casadi:RuntimeError\","
+      g << "if (argc>" << n_in_ << ")\n"
+        << "{\n"
+        << "free(w);\n"
+        << "mexErrMsgIdAndTxt(\"Casadi:RuntimeError\","
         << "\"Evaluation of \\\"" << name_ << "\\\" failed. Too many input arguments "
-        << "(%d, max " << n_in_ << ")\", argc);\n";
+        << "(%d, max " << n_in_ << ")\", argc);\n"
+        << "}\n";
 
-      g << "if (resc>" << n_out_ << ") mexErrMsgIdAndTxt(\"Casadi:RuntimeError\","
+      g << "if (resc>" << n_out_ << ")\n"
+        << "{\n"
+        << "free(w);\n"
+        << "mexErrMsgIdAndTxt(\"Casadi:RuntimeError\","
         << "\"Evaluation of \\\"" << name_ << "\\\" failed. "
-        << "Too many output arguments (%d, max " << n_out_ << ")\", resc);\n";
+        << "Too many output arguments (%d, max " << n_out_ << ")\", resc);\n"
+        << "}\n";
 
       for (casadi_int i=0; i<n_in_; ++i) {
         std::string p = "argv[" + str(i) + "]";
@@ -2590,8 +2598,12 @@ namespace casadi {
 
       // Call the function
       g << "i = " << name_ << "(arg, res, iw, " << fw << ", mem);\n"
-        << "if (i) mexErrMsgIdAndTxt(\"Casadi:RuntimeError\",\"Evaluation of \\\"" << name_
-        << "\\\" failed.\");\n";
+        << "if (i)\n"
+        << "{\n"
+        << "free(w);\n"
+        << "mexErrMsgIdAndTxt(\"Casadi:RuntimeError\",\"Evaluation of \\\"" << name_
+        << "\\\" failed.\");\n"
+        << "}\n";
       g << name_ << "_release(mem);\n";
       g << name_ << "_decref();\n";
 
@@ -2600,6 +2612,9 @@ namespace casadi {
         g << "if (" << g.res(i) << ") resv[" << i << "] = "
           << g.to_mex(sparsity_out_[i], g.res(i)) << "\n";
       }
+
+      // Free memory
+      g << "free(w);\n";
 
       // End conditional compilation and function
       g << "}\n"
